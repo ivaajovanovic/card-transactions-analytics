@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  eureka-server:
+    build:
+      context: ./EurekaService
+      dockerfile: Dockerfile
+    image: eureka-server:latest
+    ports:
+      - "8761:8761"
+
+  gateway-api:
+    build:
+      context: ./GatewayService
+      dockerfile: Dockerfile
+    image: gateway-api:latest
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+    depends_on:
+      - eureka-server
+      - elastic-search-service
+      - graph-service
+      - columnar-key-value-service
+    ports:
+      - "9003:9000"
+
+
+
+  columnar-key-value-service:
+     build:
+       context: ./ColumnarDatabaseService
+       dockerfile: Dockerfile
+     image: columnar-key-value-service:latest
+     depends_on:
+       - cassandradb
+       - eureka-server
+     restart: always
+     environment:
+       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+       SPRING_DATA_CASSANDRA_CONTACT_POINTS: cassandradb
+       SPRING_DATA_CASSANDRA_PORT: 9042
+     ports:
+       - "9050:9050"
+
+
+  cassandradb:
+     image: cassandra:latest
+     ports:
+       - "9042:9042"
+     volumes:
+       - data:/var/lib/cassandra
+     healthcheck:
+       test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
+       interval: 30s
+       timeout: 10s
+
+
+
+  graph-service:
+    build:
+      context: ./GraphDatabaseService
+      dockerfile: Dockerfile
+    image: graph-spring-example:latest
+    depends_on:
+      - eureka-server
+      - neo4j
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_NEO4J_URI: "bolt://neo4j:7687"
+      SPRING_NEO4J_USERNAME: neo4j
+      SPRING_NEO4J_PASSWORD: password
+     
+  elastic-search-service:
+     build:
+       context: ./ElasticSearchDatabaseService
+       dockerfile: Dockerfile
+     image: elastic-spring-example:latest
+     restart: on-failure
+     depends_on:
+       - eureka-server
+       - elasticsearch
+       #- kafka
+     environment:
+       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      
+
+
+  neo4j:
+    image: neo4j
+    container_name: neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/password
+    volumes:
+      - ./data:/data
+  
+  elasticsearch:
+     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+     container_name: elasticsearch
+     restart: always
+     ports:
+       - ${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}
+     env_file:
+       - .env
+     environment:
+       - xpack.security.enabled=false
+       - discovery.type=single-node
+       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+     ulimits:
+       memlock:
+         soft: -1
+         hard: -1
+
+
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: kibana
+    restart: always
+    ports:
+      - "5601:5601"
+    env_file:
+      - .env
+    environment:
+      - ELASTICSEARCH_URL=http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
+      - ELASTICSEARCH_HOSTS=http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
+    depends_on:
+      - elasticsearch
+
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SERVER_ROOT_URL=http://my.grafana.server/
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+    ports:
+      - '3000:3000'
+    volumes:
+      - 'grafana_storage:/var/lib/grafana'
+
+
+ 
+
+
+volumes:
+  data:
+  grafana_storage: { }
