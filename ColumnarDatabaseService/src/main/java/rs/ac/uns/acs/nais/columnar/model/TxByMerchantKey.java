@@ -1,35 +1,30 @@
 package rs.ac.uns.acs.nais.columnar.model;
 
-import java.io.Serializable;
-import java.time.LocalDate;
-import java.util.UUID;
-
-import org.springframework.data.cassandra.core.cql.Ordering;
-import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
-import org.springframework.data.cassandra.core.mapping.CassandraType;
-import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.cassandra.core.cql.Ordering;
+import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyClass;
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
 
-/**
- * PRIMARY KEY ((merchant_id, tx_date), tx_time DESC)
- */
+import java.time.LocalDate;
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TxByMerchantKey implements Serializable {
+@PrimaryKeyClass
+public class TxByMerchantKey {
 
-    @PrimaryKeyColumn(name = "merchant_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
+    @PrimaryKeyColumn(name = "merchant_id", type = PrimaryKeyType.PARTITIONED)
     private UUID merchantId;
 
-    @PrimaryKeyColumn(name = "tx_date", type = PrimaryKeyType.PARTITIONED, ordinal = 1)
+    @PrimaryKeyColumn(name = "tx_date", type = PrimaryKeyType.CLUSTERED, ordering = Ordering.DESCENDING)
     private LocalDate txDate;
 
-    @PrimaryKeyColumn(name = "tx_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
-    @CassandraType(type = CassandraType.Name.TIMEUUID)
-    private UUID txTime; // timeuuid
+    @PrimaryKeyColumn(name = "tx_time", type = PrimaryKeyType.CLUSTERED, ordering = Ordering.DESCENDING)
+    private UUID txTime;
 }

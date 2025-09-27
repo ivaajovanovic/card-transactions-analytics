@@ -24,37 +24,38 @@ services:
     ports:
       - "9003:9000"
 
-
-
   columnar-key-value-service:
-     build:
-       context: ./ColumnarDatabaseService
-       dockerfile: Dockerfile
-     image: columnar-key-value-service:latest
-     depends_on:
-       - cassandradb
-       - eureka-server
-     restart: always
-     environment:
-       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
-       SPRING_DATA_CASSANDRA_CONTACT_POINTS: cassandradb
-       SPRING_DATA_CASSANDRA_PORT: 9042
-     ports:
-       - "9050:9050"
-
+    build:
+      context: ./ColumnarDatabaseService
+      dockerfile: Dockerfile
+    image: columnar-key-value-service:latest
+    depends_on:
+      - cassandradb
+      - eureka-server
+    restart: always
+    environment:
+      # Eureka (relaxed binding for eureka.client.service-url.defaultZone)
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      # Cassandra connection (overrides spring.data.cassandra.*)
+      SPRING_DATA_CASSANDRA_CONTACT_POINTS: cassandradb
+      SPRING_DATA_CASSANDRA_PORT: 9042
+      SPRING_DATA_CASSANDRA_LOCAL_DATACENTER: datacenter1
+      SPRING_DATA_CASSANDRA_KEYSPACE_NAME: nais
+      # If you prefer to toggle schema init via env (optional):
+      # APP_SCHEMA_INIT: "true"
+    ports:
+      - "9050:9050"
 
   cassandradb:
-     image: cassandra:latest
-     ports:
-       - "9042:9042"
-     volumes:
-       - data:/var/lib/cassandra
-     healthcheck:
-       test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
-       interval: 30s
-       timeout: 10s
-
-
+    image: cassandra:latest
+    ports:
+      - "9042:9042"
+    volumes:
+      - data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
+      interval: 30s
+      timeout: 10s
 
   graph-service:
     build:
@@ -69,22 +70,20 @@ services:
       SPRING_NEO4J_URI: "bolt://neo4j:7687"
       SPRING_NEO4J_USERNAME: neo4j
       SPRING_NEO4J_PASSWORD: password
-     
-  elastic-search-service:
-     build:
-       context: ./ElasticSearchDatabaseService
-       dockerfile: Dockerfile
-     image: elastic-spring-example:latest
-     restart: on-failure
-     depends_on:
-       - eureka-server
-       - elasticsearch
-       #- kafka
-     environment:
-       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
-       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
-      
 
+  elastic-search-service:
+    build:
+      context: ./ElasticSearchDatabaseService
+      dockerfile: Dockerfile
+    image: elastic-spring-example:latest
+    restart: on-failure
+    depends_on:
+      - eureka-server
+      - elasticsearch
+      # - kafka
+    environment:
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
 
   neo4j:
     image: neo4j
@@ -96,25 +95,23 @@ services:
       NEO4J_AUTH: neo4j/password
     volumes:
       - ./data:/data
-  
+
   elasticsearch:
-     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-     container_name: elasticsearch
-     restart: always
-     ports:
-       - ${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}
-     env_file:
-       - .env
-     environment:
-       - xpack.security.enabled=false
-       - discovery.type=single-node
-       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-     ulimits:
-       memlock:
-         soft: -1
-         hard: -1
-
-
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch
+    restart: always
+    ports:
+      - ${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}
+    env_file:
+      - .env
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.1
@@ -141,10 +138,6 @@ services:
       - '3000:3000'
     volumes:
       - 'grafana_storage:/var/lib/grafana'
-
-
- 
-
 
 volumes:
   data:

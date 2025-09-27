@@ -33,9 +33,11 @@ spring:
           predicates:
             - Path=/document-database-service/**
         - id: columnar-database-service
-          uri: http://columnar-database-service
+          uri: lb://columnar-database-service
           predicates:
             - Path=/columnar-database-service/**
+          filters:
+            - StripPrefix=1
         - id: elasticsearch-database-service
           uri: http://elasticsearch-database-service
           predicates:
@@ -48,4 +50,3 @@ spring:
           uri: http://vector-database-service
           predicates:
             - Path=/vector-database-service
-
