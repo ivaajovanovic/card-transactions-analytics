@@ -1,0 +1,232 @@
+# ElasticSearch Database Service Test Requests
+# Use with VS Code REST Client extension or copy to Postman
+# Base URL: http://localhost:9080
+
+###
+### 1. DATA GENERATION ENDPOINTS
+###
+
+### Generate 100 sample transactions
+POST http://localhost:9080/api/data-generator/transactions/100
+Content-Type: application/json
+
+### Generate 20 sample user activities
+POST http://localhost:9080/api/data-generator/user-activities/20
+Content-Type: application/json
+
+### Generate complete sample data (1000 transactions + 1000 user activities)
+POST http://localhost:9080/api/data-generator/sample-data
+Content-Type: application/json
+
+###
+### 2. TRANSACTION ENDPOINTS
+###
+
+### Get total transaction count
+GET http://localhost:9080/api/transactions/count
+
+### Get all transactions (may be empty initially)
+GET http://localhost:9080/api/transactions
+
+### Create a new transaction
+POST http://localhost:9080/api/transactions
+Content-Type: application/json
+
+{
+  "cardId": "CARD-001",
+  "merchantId": "MERCHANT-001", 
+  "amount": 99.50,
+  "date": "2025-09-27T10:30:00",
+  "description": "Coffee Shop Purchase"
+}
+
+### Create multiple transactions at once
+POST http://localhost:9080/api/transactions/batch
+Content-Type: application/json
+
+[
+  {
+    "cardId": "CARD-002",
+    "merchantId": "MERCHANT-002",
+    "amount": 25.99,
+    "date": "2025-09-27T14:20:00",
+    "description": "Grocery Store"
+  },
+  {
+    "cardId": "CARD-002", 
+    "merchantId": "MERCHANT-003",
+    "amount": 150.00,
+    "date": "2025-09-27T16:45:00",
+    "description": "Gas Station"
+  }
+]
+
+### Get transactions by card ID (replace CARD-002 with actual card ID)
+GET http://localhost:9080/api/transactions/card/CARD-002
+
+### Get transactions by card ID with pagination
+GET http://localhost:9080/api/transactions/card/CARD-002/paginated?page=0&size=5
+
+### Get transactions by merchant ID
+GET http://localhost:9080/api/transactions/merchant/MERCHANT-002
+
+### Get transactions by amount range
+GET http://localhost:9080/api/transactions/amount-range?minAmount=20&maxAmount=100
+
+### Get transactions by date range
+GET http://localhost:9080/api/transactions/date-range?startDate=2025-07-01T00:00:00&endDate=2025-09-30T23:59:59
+
+### Search transactions by description
+GET http://localhost:9080/api/transactions/search?description=coffee
+
+### Get top transactions by amount
+GET http://localhost:9080/api/transactions/top-amounts
+
+### Get transaction count by card ID
+GET http://localhost:9080/api/transactions/card/CARD-002/count
+
+### Get specific transaction by ID (replace {id} with actual transaction ID)
+# GET http://localhost:9080/api/transactions/{id}
+
+### Update a transaction (replace {id} with actual transaction ID)
+# PUT http://localhost:9080/api/transactions/{id}
+# Content-Type: application/json
+# 
+# {
+#   "cardId": "CARD-001",
+#   "merchantId": "MERCHANT-001",
+#   "amount": 105.50,
+#   "date": "2024-01-15T10:30:00",
+#   "description": "Updated Coffee Shop Purchase"
+# }
+
+### Delete a specific transaction (replace {id} with actual transaction ID)
+# DELETE http://localhost:9080/api/transactions/{id}
+
+### Delete all transactions (USE WITH CAUTION!)
+# DELETE http://localhost:9080/api/transactions
+
+###
+### 3. USER ACTIVITY ENDPOINTS
+###
+
+### Get total user activity count
+GET http://localhost:9080/api/user-activities/count
+
+### Get all user activities
+GET http://localhost:9080/api/user-activities
+
+### Create a new user activity
+POST http://localhost:9080/api/user-activities
+Content-Type: application/json
+
+{
+  "userId": "USER-001",
+  "txCount": 5,
+  "lastTxDate": "2025-09-27T16:45:00",
+  "totalSpent": 275.49
+}
+
+### Create multiple user activities
+POST http://localhost:9080/api/user-activities/batch
+Content-Type: application/json
+
+[
+  {
+    "userId": "USER-002",
+    "txCount": 8,
+    "lastTxDate": "2025-09-26T20:30:00", 
+    "totalSpent": 542.75
+  },
+  {
+    "userId": "USER-003",
+    "txCount": 3,
+    "lastTxDate": "2025-09-25T12:15:00",
+    "totalSpent": 89.99
+  }
+]
+
+### Get user activity by user ID
+GET http://localhost:9080/api/user-activities/USER-002
+
+### Get users by transaction count range
+GET http://localhost:9080/api/user-activities/transaction-count-range?minCount=3&maxCount=10
+
+### Get users by spending range  
+GET http://localhost:9080/api/user-activities/spending-range?minSpent=100&maxSpent=600
+
+### Get users by last transaction date range
+GET http://localhost:9080/api/user-activities/last-transaction-range?startDate=2025-09-25T00:00:00&endDate=2025-09-27T23:59:59
+
+### Get top spenders
+GET http://localhost:9080/api/user-activities/top-spenders
+
+### Get most active users (by transaction count)
+GET http://localhost:9080/api/user-activities/most-active
+
+### Get users with recent activity
+GET http://localhost:9080/api/user-activities/recent-activity
+
+### Get inactive users
+GET http://localhost:9080/api/user-activities/inactive
+
+### Get active users with pagination
+GET http://localhost:9080/api/user-activities/active/paginated?minTransactionCount=2&page=0&size=5
+
+### Get user count by spending range
+GET http://localhost:9080/api/user-activities/spending-range/count?minSpent=100&maxSpent=500
+
+### Update user activity (replace {userId} with actual user ID)
+# PUT http://localhost:9080/api/user-activities/{userId}
+# Content-Type: application/json
+# 
+# {
+#   "userId": "USER-001",
+#   "txCount": 7,
+#   "lastTxDate": "2024-01-16T10:00:00",
+#   "totalSpent": 325.75
+# }
+
+### Delete user activity (replace {userId} with actual user ID)
+# DELETE http://localhost:9080/api/user-activities/{userId}
+
+### Delete all user activities (USE WITH CAUTION!)
+# DELETE http://localhost:9080/api/user-activities
+
+###
+### 4. HEALTH CHECK AND SYSTEM ENDPOINTS
+###
+
+### Check if ElasticSearch service is running
+GET http://localhost:9080/actuator/health
+
+### Check ElasticSearch cluster health directly
+GET http://localhost:9200/_cluster/health?pretty
+
+### Get ElasticSearch indices information
+GET http://localhost:9200/_cat/indices?v
+
+### Check if any data exists in transactions index
+GET http://localhost:9200/transactions/_count
+
+### Check if any data exists in user_activity index  
+GET http://localhost:9200/user_activity/_count
+
+###
+### 5. EUREKA SERVICE DISCOVERY
+###
+
+### Check Eureka server
+GET http://localhost:8761/
+
+### Check registered services in Eureka
+GET http://localhost:8761/eureka/apps
+
+###
+### Test Sequence Recommendation:
+### 1. First run: POST /api/data-generator/sample-data
+### 2. Then run: GET /api/transactions/count and GET /api/user-activities/count
+### 3. Test various query endpoints with the generated data
+### 4. Try creating custom transactions and user activities
+### 5. Test search and filtering capabilities
+###

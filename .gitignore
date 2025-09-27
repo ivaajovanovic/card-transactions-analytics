@@ -43,3 +43,38 @@ logs/
 *.zip
 *.tar.gz
 *.rar
+.vscode/*
+/.vscode/
+
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.ipr
+*.iws
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+env/
+
+# Database runtime files
+data/
+
+# Maven wrapper jar (binary files)
+**/.mvn/wrapper/maven-wrapper.jar
+*/.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
+
+# Build artifacts
+target/
+*/target/
+**/target/
