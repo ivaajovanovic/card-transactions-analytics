@@ -1,16 +1,31 @@
-FROM maven:3.8.4-openjdk-17 AS build
+# syntax=docker/dockerfile:1.6
+
+# 1) BUILD STAGE – noviji Maven + bolje keširanje i retri za mrežu
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /workspace/app
 
-COPY . .
-RUN mvn install -DskipTests
+# prvo POM da bi se keširale zavisnosti
+COPY pom.xml ./
+RUN --mount=type=cache,id=m2-cache,target=/root/.m2 \
+    mvn -B -q dependency:go-offline
 
-RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
+# sada i ostatak koda
+COPY src ./src
 
-FROM openjdk:17-jdk-slim
-VOLUME /tmp
-ARG DEPENDENCY=/workspace/app/target/dependency
-COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
-COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
-COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app 
+# build sa defensivnim HTTP opcijama (fix za "Premature end of Content-Length")
+RUN --mount=type=cache,id=m2-cache,target=/root/.m2 \
+    mvn -B -DskipTests \
+       -Dhttp.keepAlive=false \
+       -Dmaven.wagon.http.pool=false \
+       -Dmaven.wagon.http.retryHandler.count=3 \
+       clean package
 
-ENTRYPOINT ["java", "-cp", "app:app/lib/*", "rs.ac.uns.acs.nais.GraphDatabaseService.GraphDatabaseServiceApplication"]
+# 2) RUNTIME STAGE – mali JRE image, samo pokreni jar
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /workspace/app/target/*.jar app.jar
+
+# (opciono) u tvom compose već mapiraš 9001
+EXPOSE 9001
+
+ENTRYPOINT ["java","-jar","/app/app.jar"]
