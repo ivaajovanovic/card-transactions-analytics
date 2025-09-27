@@ -30,3 +30,13 @@ env/
 
 # Database runtime files
 data/
+
+# Maven wrapper jar (binary files)
+**/.mvn/wrapper/maven-wrapper.jar
+*/.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
+
+# Build artifacts
+target/
+*/target/
+**/target/
