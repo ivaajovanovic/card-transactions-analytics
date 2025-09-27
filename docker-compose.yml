@@ -8,6 +8,14 @@ services:
     image: eureka-server:latest
     ports:
       - "8761:8761"
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
 
   gateway-api:
     build:
@@ -17,10 +25,14 @@ services:
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
     depends_on:
-      - eureka-server
-      - elastic-search-service
-      - graph-service
-      - columnar-key-value-service
+      eureka-server:
+        condition: service_started
+      elastic-search-service:
+        condition: service_started
+      graph-service:
+        condition: service_started
+      columnar-key-value-service:
+        condition: service_started
     ports:
       - "9003:9000"
 
@@ -32,16 +44,25 @@ services:
        dockerfile: Dockerfile
      image: columnar-key-value-service:latest
      depends_on:
-       - cassandradb
-       - eureka-server
-     restart: always
+       cassandradb:
+         condition: service_healthy
+       eureka-server:
+         condition: service_started
+     restart: on-failure
      environment:
        EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
        SPRING_DATA_CASSANDRA_CONTACT_POINTS: cassandradb
        SPRING_DATA_CASSANDRA_PORT: 9042
      ports:
        - "9050:9050"
-
+     deploy:
+       resources:
+         limits:
+           memory: 512M
+           cpus: '0.5'
+         reservations:
+           memory: 256M
+           cpus: '0.25'
 
   cassandradb:
      image: cassandra:latest
@@ -49,12 +70,27 @@ services:
        - "9042:9042"
      volumes:
        - data:/var/lib/cassandra
+     environment:
+       - CASSANDRA_CLUSTER_NAME=Test Cluster
+       - CASSANDRA_DC=datacenter1  
+       - CASSANDRA_RACK=rack1
+       - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+       - MAX_HEAP_SIZE=1G
+       - HEAP_NEWSIZE=200M
      healthcheck:
        test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
        interval: 30s
-       timeout: 10s
-
-
+       timeout: 15s
+       retries: 10
+       start_period: 60s
+     deploy:
+       resources:
+         limits:
+           memory: 1.3G
+           cpus: '1.5'
+         reservations:
+           memory: 1G
+           cpus: '1'
 
   graph-service:
     build:
@@ -62,27 +98,42 @@ services:
       dockerfile: Dockerfile
     image: graph-spring-example:latest
     depends_on:
-      - eureka-server
-      - neo4j
+      eureka-server:
+        condition: service_started
+      neo4j:
+        condition: service_healthy
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
       SPRING_NEO4J_URI: "bolt://neo4j:7687"
       SPRING_NEO4J_USERNAME: neo4j
       SPRING_NEO4J_PASSWORD: password
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
      
   elastic-search-service:
      build:
        context: ./ElasticSearchDatabaseService
        dockerfile: Dockerfile
+       network: host
      image: elastic-spring-example:latest
      restart: on-failure
      depends_on:
-       - eureka-server
-       - elasticsearch
+       eureka-server:
+         condition: service_started
+       elasticsearch:
+         condition: service_healthy
        #- kafka
      environment:
        SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
        EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+     ports:
+       - "9080:9080"
       
 
 
@@ -94,8 +145,25 @@ services:
       - "7687:7687"
     environment:
       NEO4J_AUTH: neo4j/password
+      NEO4J_dbms_memory_heap_initial__size: 256m
+      NEO4J_dbms_memory_heap_max__size: 1g
+      NEO4J_dbms_memory_pagecache_size: 512m
     volumes:
       - ./data:/data
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
   
   elasticsearch:
      image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
@@ -109,10 +177,38 @@ services:
        - xpack.security.enabled=false
        - discovery.type=single-node
        - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+       # Fix disk allocation threshold for development
+       - cluster.routing.allocation.disk.threshold_enabled=false
+       - cluster.routing.allocation.disk.watermark.low=95%
+       - cluster.routing.allocation.disk.watermark.high=98%
+       - cluster.routing.allocation.disk.watermark.flood_stage=99%
+       # Set default number of replicas to 0 for single-node setup
+       - action.auto_create_index=true
+       # Additional settings for better performance in development
+       - bootstrap.memory_lock=true
+       - cluster.routing.allocation.node_concurrent_recoveries=4
+       - indices.memory.index_buffer_size=256mb
+       - network.host=0.0.0.0
+       - http.port=9200
+       - transport.port=9300
      ulimits:
        memlock:
          soft: -1
          hard: -1
+     healthcheck:
+       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=10s || exit 1"]
+       interval: 30s
+       timeout: 15s
+       retries: 10
+       start_period: 60s
+     deploy:
+       resources:
+         limits:
+           memory: 1.3G
+           cpus: '1.5'
+         reservations:
+           memory: 1G
+           cpus: '1'
 
 
 
