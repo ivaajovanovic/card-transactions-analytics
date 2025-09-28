@@ -109,6 +109,8 @@ services:
       SERVER_PORT: 9001
     ports:
       - "9001:9001"
+    volumes:
+      - ./output:/app/output  # Mapira output folder na lokalnu mašinu
     deploy:
       resources:
         limits:

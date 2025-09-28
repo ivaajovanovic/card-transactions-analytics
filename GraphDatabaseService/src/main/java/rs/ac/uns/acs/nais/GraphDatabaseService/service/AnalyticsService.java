@@ -16,7 +16,7 @@ public class AnalyticsService {
     
     public List<TopMerchantView> getTopMerchantsByUser(String userId, long limit) {
         String query = """
-            MATCH (u:User {id:$userId})-[:OWNS]->(:Card)<-[:MADE_WITH]-(t:Transaction)-[s:SPENT_ON]->(m:Merchant)
+            MATCH (u:User {id:$userId})-[:OWNS]->(c:Card)<-[:MADE_WITH]-(t:Transaction)-[s:SPENT_ON]->(m:Merchant)
             WITH m,
                  sum(CASE WHEN s.channel='POS' THEN t.amount ELSE 0 END)    AS posAmt,
                  sum(CASE WHEN s.channel='ONLINE' THEN t.amount ELSE 0 END) AS onlineAmt,
@@ -47,7 +47,7 @@ public class AnalyticsService {
     
     public List<SuspiciousPosView> getSuspiciousPos() {
         String query = """
-            MATCH (:User)-[:OWNS]->(c:Card)<-[:MADE_WITH]-(t:Transaction)-[s:SPENT_ON]->(m:Merchant)
+            MATCH (u:User)-[:OWNS]->(c:Card)<-[:MADE_WITH]-(t:Transaction)-[s:SPENT_ON]->(m:Merchant)
             WHERE s.channel='POS' AND coalesce(s.cardPresent,false)=false
             WITH c,m,count(*) AS cnt,sum(t.amount) AS total
             RETURN c.id AS cardId, m.name AS merchant, cnt AS cnt, total AS total
@@ -71,7 +71,7 @@ public class AnalyticsService {
     
     public List<CategorySpendPoint> getCategorySpendByDay(String userId, long days) {
         String query = """
-            MATCH (u:User {id:$userId})-[:OWNS]->(:Card)<-[:MADE_WITH]-(t:Transaction)-[:SPENT_ON]->(m:Merchant)-[:IN_CATEGORY]->(cat:Category)
+            MATCH (u:User {id:$userId})-[:OWNS]->(c:Card)<-[:MADE_WITH]-(t:Transaction)-[:SPENT_ON]->(m:Merchant)-[:IN_CATEGORY]->(cat:Category)
             WHERE t.ts >= datetime() - duration({days:$days})
             WITH cat.name AS category, date(t.ts) AS date, sum(t.amount) AS daily
             RETURN category AS category, date AS date, daily AS daily
@@ -95,11 +95,11 @@ public class AnalyticsService {
     
     public List<CrossChannelHit> getCrossChannelWithin7d() {
         String query = """
-            MATCH (u:User)-[:OWNS]->(:Card)<-[:MADE_WITH]-(t1:Transaction)-[s1:SPENT_ON]->(m:Merchant)
+            MATCH (u:User)-[:OWNS]->(c:Card)<-[:MADE_WITH]-(t1:Transaction)-[s1:SPENT_ON]->(m:Merchant)
             WHERE s1.channel='POS'
             WITH u, m, collect({ts:t1.ts}) AS posTs
-            MATCH (u)-[:OWNS]->(:Card)<-[:MADE_WITH]-(t2:Transaction)-[s2:SPENT_ON]->(m)
-            WHERE s2.channel='ONLINE'
+            MATCH (u)-[:OWNS]->(c2:Card)<-[:MADE_WITH]-(t2:Transaction)-[s2:SPENT_ON]->(m)
+            WHERE s2.channel='Online'
             WITH u, m, posTs, collect(t2.ts) AS onTs
             WITH u, m, [p IN posTs WHERE any(o IN onTs WHERE o>=p.ts AND o<=p.ts+duration('P7D'))] AS cross
             WHERE size(cross) > 0
@@ -123,7 +123,7 @@ public class AnalyticsService {
     
     public List<CardTypeChannelCategoryAvgView> getAvgByCardTypeChannelCategory(String cardType) {
         String query = """
-            MATCH (ct:CardType {name:$cardType})<-[:IS_TYPE]-(c:Card)<-[:MADE_WITH]-(t:Transaction)-[s:SPENT_ON]->(:Merchant)-[:IN_CATEGORY]->(cat:Category)
+            MATCH (ct:CardType {name:$cardType})<-[:IS_TYPE]-(c:Card)<-[:MADE_WITH]-(t:Transaction)-[s:SPENT_ON]->(m:Merchant)-[:IN_CATEGORY]->(cat:Category)
             WITH s.channel AS channel, cat.name AS category, count(*) AS txCount, avg(t.amount) AS avgTicket
             RETURN channel AS channel, category AS category, txCount AS txCount, round(avgTicket,2) AS avgTicket
             ORDER BY channel, category
@@ -161,7 +161,7 @@ public class AnalyticsService {
     
     public List<ShopsAtUpsertView> upsertShopEdges() {
         String query = """
-            MATCH (u:User)-[:OWNS]->(:Card)<-[:MADE_WITH]-(t:Transaction)-[:SPENT_ON]->(m:Merchant)
+            MATCH (u:User)-[:OWNS]->(c:Card)<-[:MADE_WITH]-(t:Transaction)-[:SPENT_ON]->(m:Merchant)
             WITH u,m,count(*) AS txCount,sum(t.amount) AS totalAmt
             MERGE (u)-[r:SHOPS_AT]->(m)
             SET r.txCount = txCount,

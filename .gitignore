@@ -8,6 +8,9 @@
 # Neo4j data directory - exclude large database files
 data/
 
+# PDF Output folder - exclude generated reports
+output/
+
 # Maven
 target/
 *.jar
