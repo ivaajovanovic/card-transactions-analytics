@@ -22,7 +22,6 @@
     <spring-cloud.version>2022.0.0</spring-cloud.version>
     <lombok.version>1.18.32</lombok.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
-    <!-- Ako želiš noviji MapStruct, može i 1.6.0 -->
   </properties>
 
   <dependencyManagement>
@@ -76,7 +75,7 @@
       <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
 
-    <!-- Datastax Java driver (opciono; verziju obično povlači spring-boot-dependencies) -->
+    <!-- (Opcionalno) Datastax Java driver core -->
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
@@ -114,13 +113,21 @@
 
   <build>
     <plugins>
-      <!-- Spring Boot plugin -->
+      <!-- Spring Boot plugin: pravi fat JAR sa classifier-om 'exec' -->
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
+          <classifier>exec</classifier>
           <excludes>
-            <!-- Ne pakuje lombok u finalni jar -->
+            <!-- ne pakuje lombok u finalni jar -->
             <exclude>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok</artifactId>
@@ -147,15 +154,14 @@
               <artifactId>mapstruct-processor</artifactId>
               <version>${mapstruct.version}</version>
             </path>
-            <!-- (Preporuka) binding da MapStruct lepo radi preko Lombok-a -->
+            <!-- binding da MapStruct lepo radi sa Lombok-om -->
             <path>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok-mapstruct-binding</artifactId>
               <version>0.2.0</version>
             </path>
           </annotationProcessorPaths>
-          <!-- Ako želiš podrazumevani componentModel=spring -->
-          <!--
+          <!-- Primer za podrazumevani componentModel=spring
           <compilerArgs>
             <arg>-Amapstruct.defaultComponentModel=spring</arg>
           </compilerArgs>

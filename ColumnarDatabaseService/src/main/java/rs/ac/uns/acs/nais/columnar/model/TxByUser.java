@@ -14,14 +14,13 @@ import java.util.UUID;
 public class TxByUser {
 
     @PrimaryKey
-    private TxByUserKey key;
+    private TxByUserKey key; 
 
     @Column("tx_id")        private UUID txId;
-    @Column("user_id")      private UUID userId;
-    @Column("card_id")      private UUID cardId;
     @Column("merchant_id")  private UUID merchantId;
+    @Column("card_id")      private UUID cardId;
     @Column("category_id")  private UUID categoryId;
-    @Column("amount_cents") private Long amountCents;  
+    @Column("amount_cents") private Long amountCents;
     @Column("currency")     private String currency;
     @Column("status")       private String status;
     @Column("occurred_at")  private Instant occurredAt;

@@ -1,63 +1,48 @@
-package rs.ac.uns.acs.nais.ColumnarDatabaseService.config;
+package rs.ac.uns.acs.nais.columnar.config;
 
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.cassandra.CqlSessionBuilderCustomizer;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.cassandra.config.AbstractCassandraConfiguration;
-import org.springframework.data.cassandra.config.SchemaAction;
-import org.springframework.data.cassandra.core.cql.keyspace.CreateKeyspaceSpecification;
-import org.springframework.data.cassandra.core.cql.keyspace.KeyspaceOption;
 import org.springframework.data.cassandra.repository.config.EnableCassandraRepositories;
+import org.springframework.data.cassandra.core.cql.CqlTemplate;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.UUID;
+import java.util.function.Supplier;
 
 @Configuration
-@EnableCassandraRepositories
-public class CassandraConfig extends AbstractCassandraConfiguration {
+@EnableCassandraRepositories(basePackages = "rs.ac.uns.acs.nais.columnar.repo")
+public class CassandraConfig {
 
-    @Value("${spring.data.cassandra.keyspace-name}")
-    private String KEYSPACE;
+    @Value("${spring.data.cassandra.local-datacenter:datacenter1}")
+    private String localDatacenter;
 
-    @Value("${spring.data.cassandra.contact-points}")
-    private String CONTACT_POINT;
-
-    @Value("${spring.data.cassandra.port}")
-    private int PORT;
-
-    @Value("${spring.data.cassandra..schema-action}")
-    private String SCHEMA_ACTION;
-
-    @Override
-    public String getContactPoints() {
-        return CONTACT_POINT;
+    /**
+     * CqlTemplate za direktne CQL upite (npr. counter UPDATE).
+     * Spring Boot već kreira CqlSession na osnovu application.properties,
+     * ovde ga samo "uvodimo" u template.
+     */
+    @Bean
+    public CqlTemplate cqlTemplate(CqlSession session) {
+        return new CqlTemplate(session);
     }
 
-    @Override
-    protected int getPort() {
-        return PORT;
+    /**
+     * Dodatni customizer da smo sigurni da je local-datacenter postavljen,
+     * čak i ako env varijable pregaze properties.
+     */
+    @Bean
+    public CqlSessionBuilderCustomizer datacenterCustomizer() {
+        return builder -> builder.withLocalDatacenter(localDatacenter);
     }
 
-    @Override
-    public SchemaAction getSchemaAction() {
-        return SchemaAction.valueOf(SCHEMA_ACTION);
+    /**
+     * Helper za generisanje timeuuid vrednosti (korisno u servisima).
+     */
+    @Bean
+    public Supplier<UUID> timeUuidSupplier() {
+        return Uuids::timeBased;
     }
-
-    @Override
-    protected String getKeyspaceName() {
-        return KEYSPACE;
-    }
-
-    @Override
-    protected List<CreateKeyspaceSpecification> getKeyspaceCreations() {
-        return Collections.singletonList(CreateKeyspaceSpecification.createKeyspace(KEYSPACE)
-                .ifNotExists()
-                .with(KeyspaceOption.DURABLE_WRITES, true)
-                .withSimpleReplication(3L));
-    }
-
-    @Override
-    public String[] getEntityBasePackages() {
-        return new String[] {"rs.ac.uns.acs.nais.ColumnarDatabaseService.entity"};
-    }
-
 }

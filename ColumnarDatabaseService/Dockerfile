@@ -1,40 +1,30 @@
 # ---------- Build stage ----------
-    FROM maven:3.9.6-eclipse-temurin-17 AS build
+    FROM maven:3.9.9-eclipse-temurin-17 AS build
     WORKDIR /workspace/app
     
-    # Cache deps
+    # Keširaj dependency-je
     COPY pom.xml .
-    RUN mvn -q -e -DskipTests dependency:go-offline
+    RUN mvn -q -DskipTests dependency:go-offline
     
-    # Copy sources and build
+    # Kopiraj izvorni kod i napravi fat JAR
     COPY src ./src
-    RUN mvn -q -DskipTests package
+    RUN mvn -q -DskipTests clean package
     
-    # Extract layers (Spring Boot layertools)
-    RUN java -Djarmode=layertools -jar target/*.jar extract
-    
-    # ---------- Run stage ----------
+    # ---------- Runtime stage ----------
     FROM eclipse-temurin:17-jre-jammy
     WORKDIR /app
+    
+    # Kopiraj Spring Boot "fat" JAR koji smo spakovali sa classifier-om 'exec'
+    # (npr. target/ColumnarDatabaseService-0.0.1-SNAPSHOT-exec.jar)
+    COPY --from=build /workspace/app/target/*-exec.jar /app/app.jar
+    
+    # Port tvog servisa (iz application.properties: server.port=9050)
     EXPOSE 9050
     
-    # Copy layers
-    COPY --from=build /workspace/app/dependencies/ ./lib/
-    COPY --from=build /workspace/app/spring-boot-loader/ ./
-    COPY --from=build /workspace/app/snapshot-dependencies/ ./lib/
-    COPY --from=build /workspace/app/application/ ./
+    # (opciono) healthcheck – možeš i da ukloniš ako ne treba
+    HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 \
+      CMD wget -qO- http://localhost:9050/actuator/health | grep '"status":"UP"' || exit 1
     
-    # Healthcheck (opciono; ako želiš, ostavi)
-    # RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-    # HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=5 \
-    #   CMD curl -fsS http://localhost:9050/actuator/health || exit 1
-    
-    # JVM tuning (opciono)
-    ENV JAVA_OPTS="-XX:+UseZGC -XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
-    
-    # Aktiviraj docker profil preko env varijable (možeš promeniti u compose-u)
-    ENV SPRING_PROFILES_ACTIVE=docker
-    
-    # Ispravan main class (paket!)
-    ENTRYPOINT ["sh","-c","java $JAVA_OPTS org.springframework.boot.loader.JarLauncher"]
+    # Pokretanje
+    ENTRYPOINT ["java","-XX:MaxRAMPercentage=75","-jar","/app/app.jar"]
     
