@@ -79,4 +79,73 @@ public class DebugController {
             "message", "Analytics test for user " + userId
         ));
     }
+    
+    /**
+     * Debug endpoint za proveravenje iznosa transakcija
+     */
+    @GetMapping("/transaction-amounts")
+    public ResponseEntity<?> checkTransactionAmounts() {
+        
+        // Ukupan broj transakcija
+        var totalCount = neo4j.query("MATCH (t:Transaction) RETURN count(t) AS count")
+            .fetchAs(Long.class)
+            .one()
+            .orElse(0L);
+            
+        // Min, max, avg iznos
+        var amountStats = neo4j.query("""
+            MATCH (t:Transaction) 
+            RETURN min(t.amount) AS min, max(t.amount) AS max, avg(t.amount) AS avg
+            """)
+            .fetch()
+            .one();
+            
+        // Transakcije sa visokim iznosima (> 5000)
+        var highAmountTx = neo4j.query("""
+            MATCH (t:Transaction)
+            WHERE t.amount > 5000
+            RETURN t.id AS txId, t.amount AS amount
+            LIMIT 10
+            """)
+            .fetch()
+            .all();
+            
+        // Transakcije sa niskim iznosima (< 10)
+        var lowAmountTx = neo4j.query("""
+            MATCH (t:Transaction)
+            WHERE t.amount < 10
+            RETURN t.id AS txId, t.amount AS amount
+            LIMIT 10
+            """)
+            .fetch()
+            .all();
+            
+        // Distribucija iznosa transakcija
+        var amountDistribution = neo4j.query("""
+            MATCH (t:Transaction)
+            WITH 
+              CASE 
+                WHEN t.amount < 10 THEN 'Very Low (<10)'
+                WHEN t.amount >= 10 AND t.amount < 100 THEN 'Low (10-100)'
+                WHEN t.amount >= 100 AND t.amount < 1000 THEN 'Medium (100-1000)'
+                WHEN t.amount >= 1000 AND t.amount <= 5000 THEN 'High (1000-5000)'
+                WHEN t.amount > 5000 THEN 'Very High (>5000)'
+                ELSE 'Unknown'
+              END AS range,
+              count(*) AS count
+            RETURN range, count
+            ORDER BY count DESC
+            """)
+            .fetch()
+            .all();
+
+        return ResponseEntity.ok(Map.of(
+            "message", "Transaction amounts analysis",
+            "totalTransactions", totalCount,
+            "amountStats", amountStats,
+            "highAmountTransactions", highAmountTx,
+            "lowAmountTransactions", lowAmountTx,
+            "amountDistribution", amountDistribution
+        ));
+    }
 }

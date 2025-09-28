@@ -141,7 +141,20 @@ public class DataGeneratorService {
             String merchantId = pick(merchantIds, rnd);
             String channel = pick(channels, rnd);
 
-            double amount = round2(rnd.nextDouble(5.0, 5000.0));
+            double amount;
+            // 10% chance za sumnjive iznose (vrlo visoki ili vrlo niski)
+            if (rnd.nextDouble() < 0.1) {
+                if (rnd.nextDouble() < 0.7) {
+                    // 70% šanse za vrlo visoki iznos
+                    amount = round2(rnd.nextDouble(5001.0, 15000.0)); // > 5000
+                } else {
+                    // 30% šanse za vrlo niski iznos
+                    amount = round2(rnd.nextDouble(1.0, 9.99)); // < 10
+                }
+            } else {
+                // normalan iznos
+                amount = round2(rnd.nextDouble(10.0, 5000.0));
+            }
             boolean cardPresent = channel.equals("CH_POS") && rnd.nextDouble() > suspiciousPosRate; // deo POS ide kao false
             String currency = "RSD";
             String tsIso = LocalDateTime.ofEpochSecond(rnd.nextLong(since, now), 0, ZoneOffset.UTC).toString();

@@ -26,4 +26,13 @@ public class UserActivity {
     
     @Field(type = FieldType.Double)
     private Double totalSpent;
+    
+    @Field(type = FieldType.Integer)
+    private Integer suspiciousTransactionCount;
+    
+    @Field(type = FieldType.Boolean)
+    private Boolean hasSuspiciousActivity;
+    
+    @Field(type = FieldType.Date, format = {}, pattern = "yyyy-MM-dd'T'HH:mm:ss||yyyy-MM-dd'T'HH:mm:ss.SSS||strict_date_optional_time||epoch_millis")
+    private String lastSuspiciousActivityDate;
 }
