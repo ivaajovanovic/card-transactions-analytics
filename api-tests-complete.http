@@ -1,0 +1,274 @@
+###
+### Card Transactions Analytics - Sveobuhvatni API Test
+### Testiranje prema specifikaciji iz dokumenta
+###
+
+# =================================
+# 1. INFRASTRUKTURA - Health Checks
+# =================================
+
+### Eureka Server Health
+GET http://localhost:8761/eureka/apps
+Accept: application/json
+
+### Columnar Database Service Health  
+GET http://localhost:9050/actuator/health
+Accept: application/json
+
+### Elasticsearch Service Health
+GET http://localhost:9080/actuator/health
+Accept: application/json
+
+### Gateway Health
+GET http://localhost:9003/actuator/health
+Accept: application/json
+
+# =================================
+# 2. TRANSAKCIONA OBRADA PODATAKA
+# =================================
+
+### Kreiranje pojedinačne transakcije
+POST http://localhost:9050/api/tx
+Content-Type: application/json
+
+{
+  "txId": "123e4567-e89b-12d3-a456-426614174000",
+  "userId": "123e4567-e89b-12d3-a456-426614174001",
+  "cardId": "123e4567-e89b-12d3-a456-426614174002",
+  "merchantId": "123e4567-e89b-12d3-a456-426614174003",
+  "categoryId": "123e4567-e89b-12d3-a456-426614174004",
+  "amountCents": 12345,
+  "currency": "EUR",
+  "status": "APPROVED",
+  "occurredAt": "2025-09-29T10:00:00Z"
+}
+
+### Batch kreiranje transakcija
+POST http://localhost:9050/api/tx/batch
+Content-Type: application/json
+
+[
+  {
+    "txId": "223e4567-e89b-12d3-a456-426614174000",
+    "userId": "123e4567-e89b-12d3-a456-426614174001",
+    "cardId": "123e4567-e89b-12d3-a456-426614174002",
+    "merchantId": "123e4567-e89b-12d3-a456-426614174003",
+    "categoryId": "123e4567-e89b-12d3-a456-426614174004",
+    "amountCents": 5000,
+    "currency": "EUR",
+    "status": "APPROVED",
+    "occurredAt": "2025-09-29T10:01:00Z"
+  },
+  {
+    "txId": "323e4567-e89b-12d3-a456-426614174000",
+    "userId": "123e4567-e89b-12d3-a456-426614174001",
+    "cardId": "123e4567-e89b-12d3-a456-426614174002",
+    "merchantId": "123e4567-e89b-12d3-a456-426614174005",
+    "categoryId": "123e4567-e89b-12d3-a456-426614174006",
+    "amountCents": 7500,
+    "currency": "EUR",
+    "status": "APPROVED",
+    "occurredAt": "2025-09-29T10:02:00Z"
+  },
+  {
+    "txId": "423e4567-e89b-12d3-a456-426614174000",
+    "userId": "123e4567-e89b-12d3-a456-426614174007",
+    "cardId": "123e4567-e89b-12d3-a456-426614174008",
+    "merchantId": "123e4567-e89b-12d3-a456-426614174003",
+    "categoryId": "123e4567-e89b-12d3-a456-426614174004",
+    "amountCents": 9999,
+    "currency": "EUR",
+    "status": "APPROVED",
+    "occurredAt": "2025-09-29T10:03:00Z"
+  }
+]
+
+# =================================
+# 3. ČITANJE PODATAKA - Različiti upiti
+# =================================
+
+### Transakcije korisnika za danas
+GET http://localhost:9050/reports/users/123e4567-e89b-12d3-a456-426614174001/transactions/today?limit=100
+Accept: application/json
+
+### Transakcije korisnika za određeni dan
+GET http://localhost:9050/reports/users/123e4567-e89b-12d3-a456-426614174001/transactions/day?date=2025-09-29&limit=50
+Accept: application/json
+
+### Transakcije po kategoriji za dan
+GET http://localhost:9050/reports/categories/123e4567-e89b-12d3-a456-426614174004/transactions/day?date=2025-09-29&limit=50
+Accept: application/json
+
+### Transakcije po trgovcu za dan  
+GET http://localhost:9050/reports/merchants/123e4567-e89b-12d3-a456-426614174003/transactions/day?date=2025-09-29&limit=50
+Accept: application/json
+
+### Totali korisnika za dan
+GET http://localhost:9050/reports/users/123e4567-e89b-12d3-a456-426614174001/totals/day?date=2025-09-29
+Accept: application/json
+
+# =================================
+# 4. GENERATOR IZVEŠTAJA
+# =================================
+
+### Category Report (Analitički izveštaj po kategoriji)
+GET http://localhost:9050/reports/analytics/category-report?categoryId=123e4567-e89b-12d3-a456-426614174004&fromDate=2025-09-29&toDate=2025-09-29
+Accept: application/json
+
+### User Activity Report (Izveštaj aktivnosti korisnika)
+GET http://localhost:9050/reports/analytics/user-activity?userId=123e4567-e89b-12d3-a456-426614174001&fromDate=2025-09-29&toDate=2025-09-29
+Accept: application/json
+
+### Complex Daily Report (Kompleksni dnevni izveštaj)
+GET http://localhost:9050/reports/analytics/complex-daily?date=2025-09-29
+Accept: application/json
+
+# =================================
+# 5. INTEGRACIJA SA ELASTICSEARCH
+# =================================
+
+### Health check Elasticsearch integracije
+GET http://localhost:9050/api/integration/elasticsearch/health
+Accept: application/json
+
+### Sinhronizacija podataka sa Elasticsearch
+POST http://localhost:9050/api/integration/elasticsearch/sync-categories?categoryId=123e4567-e89b-12d3-a456-426614174004&date=2025-09-29
+Accept: application/json
+
+### Force sync sa Elasticsearch
+POST http://localhost:9050/api/integration/elasticsearch/force-sync
+Accept: application/json
+
+### Combined Analytics Report (Kombinovani izveštaj iz oba servisa)
+GET http://localhost:9050/api/integration/analytics/combined-report?categoryId=123e4567-e89b-12d3-a456-426614174004&fromDate=2025-09-29&toDate=2025-09-29
+Accept: application/json
+
+# =================================
+# 6. BRISANJE PODATAKA
+# =================================
+
+### Brisanje transakcije po ključu korisnika
+DELETE http://localhost:9050/api/tx/users/123e4567-e89b-12d3-a456-426614174001/date/2025-09-29/time/123e4567-e89b-12d3-a456-426614174000
+Accept: application/json
+
+# =================================
+# 7. SERVICE DISCOVERY (EUREKA)
+# =================================
+
+### Lista registrovanih servisa
+GET http://localhost:8761/eureka/apps
+Accept: application/xml
+
+### Informacije o Columnar servisu
+GET http://localhost:8761/eureka/apps/COLUMNAR-DATABASE-SERVICE
+Accept: application/json
+
+### Informacije o Elasticsearch servisu  
+GET http://localhost:8761/eureka/apps/ELASTICSEARCH-DATABASE-SERVICE
+Accept: application/json
+
+# =================================
+# 8. GATEWAY RUTIRANJE
+# =================================
+
+### Pristup Columnar servisu kroz Gateway
+GET http://localhost:8080/columnar/actuator/health
+Accept: application/json
+
+### Transakcija kroz Gateway
+POST http://localhost:8080/columnar/api/tx
+Content-Type: application/json
+
+{
+  "txId": "523e4567-e89b-12d3-a456-426614174000",
+  "userId": "123e4567-e89b-12d3-a456-426614174001",
+  "cardId": "123e4567-e89b-12d3-a456-426614174002",
+  "merchantId": "123e4567-e89b-12d3-a456-426614174003",
+  "categoryId": "123e4567-e89b-12d3-a456-426614174004",
+  "amountCents": 15000,
+  "currency": "EUR",
+  "status": "APPROVED",
+  "occurredAt": "2025-09-29T11:00:00Z"
+}
+
+# =================================
+# 9. LOAD TESTING - Veći broj transakcija
+# =================================
+
+### Veliki batch za testiranje performansi
+POST http://localhost:9050/api/tx/batch
+Content-Type: application/json
+
+[
+  {
+    "txId": "t01-4567-e89b-12d3-a456-426614174000",
+    "userId": "123e4567-e89b-12d3-a456-426614174001",
+    "cardId": "123e4567-e89b-12d3-a456-426614174002",
+    "merchantId": "123e4567-e89b-12d3-a456-426614174003",
+    "categoryId": "123e4567-e89b-12d3-a456-426614174004",
+    "amountCents": 1000,
+    "currency": "EUR",
+    "status": "APPROVED",
+    "occurredAt": "2025-09-29T12:00:00Z"
+  },
+  {
+    "txId": "t02-4567-e89b-12d3-a456-426614174000",
+    "userId": "123e4567-e89b-12d3-a456-426614174001",
+    "cardId": "123e4567-e89b-12d3-a456-426614174002",
+    "merchantId": "123e4567-e89b-12d3-a456-426614174005",
+    "categoryId": "123e4567-e89b-12d3-a456-426614174006",
+    "amountCents": 2000,
+    "currency": "EUR",
+    "status": "APPROVED",
+    "occurredAt": "2025-09-29T12:01:00Z"
+  },
+  {
+    "txId": "t03-4567-e89b-12d3-a456-426614174000",
+    "userId": "123e4567-e89b-12d3-a456-426614174007",
+    "cardId": "123e4567-e89b-12d3-a456-426614174008",
+    "merchantId": "123e4567-e89b-12d3-a456-426614174003",
+    "categoryId": "123e4567-e89b-12d3-a456-426614174004",
+    "amountCents": 3000,
+    "currency": "EUR",
+    "status": "APPROVED",
+    "occurredAt": "2025-09-29T12:02:00Z"
+  },
+  {
+    "txId": "t04-4567-e89b-12d3-a456-426614174000",
+    "userId": "123e4567-e89b-12d3-a456-426614174009",
+    "cardId": "123e4567-e89b-12d3-a456-426614174010",
+    "merchantId": "123e4567-e89b-12d3-a456-426614174011",
+    "categoryId": "123e4567-e89b-12d3-a456-426614174012",
+    "amountCents": 4000,
+    "currency": "EUR", 
+    "status": "APPROVED",
+    "occurredAt": "2025-09-29T12:03:00Z"
+  },
+  {
+    "txId": "t05-4567-e89b-12d3-a456-426614174000",
+    "userId": "123e4567-e89b-12d3-a456-426614174013",
+    "cardId": "123e4567-e89b-12d3-a456-426614174014",
+    "merchantId": "123e4567-e89b-12d3-a456-426614174015",
+    "categoryId": "123e4567-e89b-12d3-a456-426614174016",
+    "amountCents": 5000,
+    "currency": "EUR",
+    "status": "APPROVED", 
+    "occurredAt": "2025-09-29T12:04:00Z"
+  }
+]
+
+# =================================
+# 10. AGREGACIJE I ANALITIKA
+# =================================
+
+### Top trgovci za period
+GET http://localhost:9050/reports/merchants/top?period=DAY&periodKey=2025-09-29&limit=10
+Accept: application/json
+
+### Top kategorije za period  
+GET http://localhost:9050/reports/categories/top?period=DAY&periodKey=2025-09-29&limit=10
+Accept: application/json
+
+### Cross-period analiza
+GET http://localhost:9050/reports/analytics/cross-period?fromPeriod=2025-09-28&toPeriod=2025-09-29
+Accept: application/json

@@ -16,7 +16,7 @@ import rs.ac.uns.acs.nais.columnar.model.TxByUserKey;
 public interface TxByUserRepo extends CassandraRepository<TxByUser, TxByUserKey> {
 
     // Prva stranica (najnovije prvo)
-    @Query("SELECT * FROM tx_by_user " +
+    @Query("SELECT * FROM transactions_by_user " +
            "WHERE user_id=:userId AND tx_date=:date " +
            "ORDER BY tx_time DESC " +
            "LIMIT :limit")
@@ -25,7 +25,7 @@ public interface TxByUserRepo extends CassandraRepository<TxByUser, TxByUserKey>
                            @Param("limit") int limit);
 
     // Sledeće stranice pre kursora (strogo '<' da nema duplikata poslednjeg reda prethodne stranice)
-    @Query("SELECT * FROM tx_by_user " +
+    @Query("SELECT * FROM transactions_by_user " +
            "WHERE user_id=:userId AND tx_date=:date AND tx_time < :before " +
            "ORDER BY tx_time DESC " +
            "LIMIT :limit")
@@ -34,6 +34,6 @@ public interface TxByUserRepo extends CassandraRepository<TxByUser, TxByUserKey>
                                  @Param("before") UUID before,
                                  @Param("limit") int limit);
 
-    @Query("DELETE FROM tx_by_user WHERE user_id=:uid AND tx_date=:d AND tx_time=:t")
+    @Query("DELETE FROM transactions_by_user WHERE user_id=:uid AND tx_date=:d AND tx_time=:t")
     void deleteExact(UUID uid, LocalDate d, UUID t);
 }

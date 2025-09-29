@@ -11,8 +11,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import rs.ac.uns.acs.nais.columnar.dto.ReportRequestDTO;
+import rs.ac.uns.acs.nais.columnar.dto.ReportResponseDTO;
 import org.springframework.web.bind.annotation.RestController;
 
 import rs.ac.uns.acs.nais.columnar.dto.TopEntryDTO;
@@ -24,6 +28,7 @@ import rs.ac.uns.acs.nais.columnar.repo.TxByUserRepo;
 import rs.ac.uns.acs.nais.columnar.repo.TxByMerchantRepo;
 import rs.ac.uns.acs.nais.columnar.repo.TxByCategoryRepo;
 import rs.ac.uns.acs.nais.columnar.service.QueryService;
+import rs.ac.uns.acs.nais.columnar.service.ReportGeneratorService;
 
 @RestController
 @RequestMapping("/reports")
@@ -32,9 +37,17 @@ import rs.ac.uns.acs.nais.columnar.service.QueryService;
 public class ReportsController {
 
     private final QueryService qs;
+    private final ReportGeneratorService reportService;
     private final TxByUserRepo userRepo;
     private final TxByMerchantRepo merchantRepo;
     private final TxByCategoryRepo categoryRepo;
+
+    // --- REPORT GENERATOR ---
+    
+    @PostMapping("/generate")
+    public ReportResponseDTO generateReport(@RequestBody ReportRequestDTO request) {
+        return reportService.generateReport(request);
+    }
 
     // --- USER ---
 
@@ -107,5 +120,44 @@ public class ReportsController {
         return (before != null)
                 ? categoryRepo.findDayBefore(categoryId, date, before, limit)
                 : categoryRepo.findDay(categoryId, date, limit);
+    }
+
+    // --- ADVANCED REPORTS (New Integration Features) ---
+
+    @GetMapping("/analytics/category-report")
+    public ReportResponseDTO getCategoryReport(
+            @RequestParam UUID categoryId,
+            @RequestParam LocalDate fromDate,
+            @RequestParam LocalDate toDate) {
+        ReportRequestDTO request = ReportRequestDTO.builder()
+                .reportType("CATEGORY")
+                .startDate(fromDate)
+                .endDate(toDate)
+                .build();
+        return reportService.generateReport(request);
+    }
+
+    @GetMapping("/analytics/user-activity")
+    public ReportResponseDTO getUserActivityReport(
+            @RequestParam UUID userId,
+            @RequestParam LocalDate fromDate,
+            @RequestParam LocalDate toDate) {
+        ReportRequestDTO request = ReportRequestDTO.builder()
+                .reportType("USER_ACTIVITY")
+                .startDate(fromDate)
+                .endDate(toDate)
+                .build();
+        return reportService.generateReport(request);
+    }
+
+    @GetMapping("/analytics/complex-daily")
+    public ReportResponseDTO getComplexDailyReport(
+            @RequestParam LocalDate date) {
+        ReportRequestDTO request = ReportRequestDTO.builder()
+                .reportType("COMPLEX_DAILY")
+                .startDate(date)
+                .endDate(date)
+                .build();
+        return reportService.generateReport(request);
     }
 }

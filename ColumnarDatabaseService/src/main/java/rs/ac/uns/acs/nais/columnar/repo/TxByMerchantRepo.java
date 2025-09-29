@@ -14,15 +14,15 @@ import rs.ac.uns.acs.nais.columnar.model.TxByMerchantKey;
 @Repository
 public interface TxByMerchantRepo extends CassandraRepository<TxByMerchant, TxByMerchantKey> {
 
-    @Query("SELECT * FROM tx_by_merchant WHERE merchant_id=?0 AND tx_date=?1 LIMIT ?2")
+    @Query("SELECT * FROM transactions_by_merchant WHERE merchant_id=?0 AND tx_date=?1 LIMIT ?2")
     List<TxByMerchant> findDay(UUID merchantId, LocalDate date, int limit);
 
-    @Query("SELECT * FROM tx_by_merchant WHERE merchant_id=?0 AND tx_date=?1 AND tx_time < ?2 LIMIT ?3")
+    @Query("SELECT * FROM transactions_by_merchant WHERE merchant_id=?0 AND tx_date=?1 AND tx_time < ?2 LIMIT ?3")
     List<TxByMerchant> findDayBefore(UUID merchantId, LocalDate date, UUID before, int limit);
 
-    @Query("SELECT * FROM tx_by_merchant WHERE merchant_id=?0 AND tx_date=?1 AND tx_time=?2")
+    @Query("SELECT * FROM transactions_by_merchant WHERE merchant_id=?0 AND tx_date=?1 AND tx_time=?2")
     List<TxByMerchant> findExact(UUID merchantId, LocalDate date, UUID timeUuid);
 
-    @Query("DELETE FROM tx_by_merchant WHERE merchant_id=:mid AND tx_date=:d AND tx_time=:t")
+    @Query("DELETE FROM transactions_by_merchant WHERE merchant_id=:mid AND tx_date=:d AND tx_time=:t")
     void deleteExact(UUID mid, LocalDate d, UUID t);
 }

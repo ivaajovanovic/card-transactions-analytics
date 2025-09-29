@@ -1,0 +1,11 @@
+{
+  "txId": "555e4567-e89b-12d3-a456-426614174000",
+  "occurredAt": "2025-09-29T16:45:00Z",
+  "userId": "555e4567-e89b-12d3-a456-426614174001",
+  "cardId": "555e4567-e89b-12d3-a456-426614174002",
+  "merchantId": "555e4567-e89b-12d3-a456-426614174003",
+  "categoryId": "555e4567-e89b-12d3-a456-426614174004",
+  "amountCents": 175000,
+  "status": "APPROVED",
+  "description": "FINAL COMPLETE PIPELINE TEST"
+}

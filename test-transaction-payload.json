@@ -1,0 +1,11 @@
+{
+  "txId": "123e4567-e89b-12d3-a456-426614174444",
+  "userId": "123e4567-e89b-12d3-a456-426614174000",
+  "cardId": "123e4567-e89b-12d3-a456-426614174111",
+  "merchantId": "123e4567-e89b-12d3-a456-426614174222", 
+  "categoryId": "123e4567-e89b-12d3-a456-426614174333",
+  "amountCents": 15075,
+  "currency": "USD",
+  "status": "COMPLETED",
+  "occurredAt": "2025-09-29T15:05:00Z"
+}

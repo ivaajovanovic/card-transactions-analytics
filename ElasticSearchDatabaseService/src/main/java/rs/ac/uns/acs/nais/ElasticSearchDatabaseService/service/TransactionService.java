@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import rs.ac.uns.acs.nais.ElasticSearchDatabaseService.model.Transaction;
 import rs.ac.uns.acs.nais.ElasticSearchDatabaseService.repository.TransactionRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,7 +34,10 @@ public class TransactionService {
     }
     
     public List<Transaction> findAll() {
-        return (List<Transaction>) transactionRepository.findAll();
+        Iterable<Transaction> iterable = transactionRepository.findAll();
+        List<Transaction> transactions = new ArrayList<>();
+        iterable.forEach(transactions::add);
+        return transactions;
     }
     
     public List<Transaction> findByCardId(String cardId) {
