@@ -1,13 +1,14 @@
 package rs.ac.uns.acs.nais.columnar.dto;
 
+import lombok.*;
 import java.time.LocalDate;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 
 @Data
+@Builder
+@NoArgsConstructor
 @AllArgsConstructor
 public class UserDayTotalsDTO {
     private LocalDate date;
-    private int count;
-    private long amountCents;
+    private int dayCount;
+    private long dayAmountCents;
 }

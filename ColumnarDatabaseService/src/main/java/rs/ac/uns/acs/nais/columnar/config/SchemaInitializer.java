@@ -1,50 +1,49 @@
 package rs.ac.uns.acs.nais.columnar.config;
 
-import com.datastax.oss.driver.api.core.CqlSession;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Component;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.data.cassandra.core.cql.CqlTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StreamUtils;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "app.schema.init", havingValue = "true", matchIfMissing = false)
-public class SchemaInitializer implements CommandLineRunner {
+@RequiredArgsConstructor
+public class SchemaInitializer {
 
-    private final CqlSession session;
+    private final ResourceLoader resourceLoader;
+    private final CqlTemplate cqlTemplate;
 
-    @Value("classpath:db/cql/schema.cql")
-    private Resource schema;
-
-    public SchemaInitializer(CqlSession session) {
-        this.session = session;
-    }
-
-    @Override
-    public void run(String... args) throws Exception {
-        log.info("Applying Cassandra schema from {}", schema);
-        try (var is = schema.getInputStream();
-             var reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-
-            StringBuilder stmt = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-                if (trimmed.isEmpty() || trimmed.startsWith("--")) continue;
-                stmt.append(line).append('\n');
-                if (trimmed.endsWith(";")) {
-                    String cql = stmt.toString();
-                    stmt.setLength(0);
-                    session.execute(cql);
-                }
+    @PostConstruct
+    public void applySchema() {
+        try {
+            Resource res = resourceLoader.getResource("classpath:db/cql/schema.cql");
+            if (!res.exists()) {
+                log.warn("Cassandra schema resource not found: {}", res);
+                return;
             }
+
+            log.info("Applying Cassandra schema from class path resource [db/cql/schema.cql]");
+            String cql = StreamUtils.copyToString(res.getInputStream(), StandardCharsets.UTF_8);
+
+            // Prođi kroz sve CQL statement-e razdvojene ';'
+            for (String stmt : cql.split(";")) {
+                String s = stmt.trim();
+                if (s.isEmpty() || s.startsWith("--") || s.startsWith("/*")) {
+                    continue;
+                }
+                cqlTemplate.execute(s);
+            }
+            log.info("Cassandra schema applied.");
+        } catch (Exception e) {
+            log.error("Failed to apply Cassandra schema", e);
+            throw new RuntimeException("Failed to apply Cassandra schema", e);
         }
-        log.info("Cassandra schema applied.");
     }
 }

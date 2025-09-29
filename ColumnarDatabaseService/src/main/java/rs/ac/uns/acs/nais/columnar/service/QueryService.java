@@ -1,108 +1,132 @@
 package rs.ac.uns.acs.nais.columnar.service;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.cassandra.core.cql.CqlTemplate;
 import org.springframework.stereotype.Service;
+
 import rs.ac.uns.acs.nais.columnar.dto.TopEntryDTO;
 import rs.ac.uns.acs.nais.columnar.dto.UserDayTotalsDTO;
-import rs.ac.uns.acs.nais.columnar.model.TxByCategory;
 import rs.ac.uns.acs.nais.columnar.model.TxByUser;
-import rs.ac.uns.acs.nais.columnar.repo.*;
+import rs.ac.uns.acs.nais.columnar.repo.TxByUserRepo;
 
 @Service
 @RequiredArgsConstructor
 public class QueryService {
 
     private final TxByUserRepo userRepo;
-    private final TxByMerchantRepo merchantRepo;
-    private final TxByCategoryRepo categoryRepo;
-    private final UserDailyTotalsRepo dailyRepo;
-    private final CqlSession session;
+    private final CqlTemplate cql;
 
     public List<TxByUser> getUserTransactionsToday(UUID userId, int limit) {
-        LocalDate todayUtc = Instant.now().atOffset(ZoneOffset.UTC).toLocalDate();
+        LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
         return userRepo.findDay(userId, todayUtc, limit);
     }
 
     public List<UserDayTotalsDTO> getUserDailyTotals(UUID userId, LocalDate from, LocalDate to) {
-        return dailyRepo.findRange(userId, from, to).stream()
-                .sorted(Comparator.comparing(u -> u.getTxDate()))
-                .map(u -> new UserDayTotalsDTO(u.getTxDate(),
-                        Optional.ofNullable(u.getDayCount()).orElse(0),
-                        Optional.ofNullable(u.getDayAmountCents()).orElse(0L)))
-                .collect(Collectors.toList());
-    }
+        String sql = "SELECT tx_date, day_count, day_amount_cents " +
+                     "FROM user_daily_totals WHERE user_id=? AND tx_date >= ? AND tx_date <= ?";
 
-    public List<TopEntryDTO> getTopMerchantsByMonth(String yyyyMM, int limit) {
-        PreparedStatement ps = session.prepare(
-                "SELECT merchant_id, tx_count, amount_cents " +
-                "FROM merchant_aggregates_by_period " +
-                "WHERE period='MONTH' AND period_key=?");
-        ResultSet rs = session.execute(ps.bind(yyyyMM));
-        List<TopEntryDTO> list = new ArrayList<>();
-        for (Row r : rs) {
-            list.add(new TopEntryDTO(
-                    r.getUuid("merchant_id"),
-                    null,
-                    r.getLong("tx_count"),
-                    r.getLong("amount_cents")));
-        }
-        return list.stream()
-                .sorted(Comparator.comparingLong(TopEntryDTO::getAmountCents).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
-    }
-
-    public List<TopEntryDTO> getTopCategoriesByMonth(String yyyyMM, int limit) {
-        PreparedStatement ps = session.prepare(
-                "SELECT category_id, tx_count, amount_cents " +
-                "FROM category_aggregates_by_period " +
-                "WHERE period='MONTH' AND period_key=?");
-        ResultSet rs = session.execute(ps.bind(yyyyMM));
-        List<TopEntryDTO> list = new ArrayList<>();
-        for (Row r : rs) {
-            list.add(new TopEntryDTO(
-                    r.getUuid("category_id"),
-                    null,
-                    r.getLong("tx_count"),
-                    r.getLong("amount_cents")));
-        }
-        return list.stream()
-                .sorted(Comparator.comparingLong(TopEntryDTO::getAmountCents).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
-    }
-
-    public List<TopEntryDTO> getMostFrequentMerchantsForCategory(UUID categoryId, LocalDate date, int limit) {
-        List<TxByCategory> dayRows = categoryRepo.findDay(categoryId, date, 10000); // grubi limit
-        Map<UUID, long[]> agg = new HashMap<>(); // merchantId -> [count, amount]
-        for (var r : dayRows) {
-            var key = r.getMerchantId();
-            agg.computeIfAbsent(key, k -> new long[]{0,0});
-            agg.get(key)[0] += 1;
-            agg.get(key)[1] += Optional.ofNullable(r.getAmountCents()).orElse(0L);
-        }
-        return agg.entrySet().stream()
-                .map(e -> new TopEntryDTO(e.getKey(), null, e.getValue()[0], e.getValue()[1]))
-                .sorted(Comparator.comparingLong(TopEntryDTO::getTxCount).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
+        // Vraćamo kako dođe iz baze (clustering je DESC po tx_date); nema oslanjanja na nepostojeći getter.
+        return cql.query(sql, ps -> ps.bind(userId, from, to),
+            (row, idx) -> new UserDayTotalsDTO(
+                row.getLocalDate("tx_date"),
+                row.getInt("day_count"),
+                row.getLong("day_amount_cents"))
+        );
     }
 
     public Map<String, Object> getAverageSpendingForUser(UUID userId, int days) {
-        LocalDate to = Instant.now().atOffset(ZoneOffset.UTC).toLocalDate();
+        LocalDate to = LocalDate.now(ZoneOffset.UTC);
         LocalDate from = to.minusDays(days - 1L);
-        var list = dailyRepo.findRange(userId, from, to);
-        long sum = list.stream().mapToLong(v -> Optional.ofNullable(v.getDayAmountCents()).orElse(0L)).sum();
-        int daysWithData = Math.max(1, list.size());
-        long avg = sum / daysWithData;
-        return Map.of("userId", userId, "days", days, "averageAmountCents", avg);
+
+        String sql = "SELECT day_count, day_amount_cents " +
+                     "FROM user_daily_totals WHERE user_id=? AND tx_date >= ? AND tx_date <= ?";
+
+        List<Map<String, Object>> agg = cql.query(sql, ps -> ps.bind(userId, from, to),
+            (row, idx) -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("cnt", row.getInt("day_count"));
+                m.put("sum", row.getLong("day_amount_cents"));
+                return m;
+            });
+
+        long totalCents = agg.stream().mapToLong(m -> (Long) m.get("sum")).sum();
+        long txCount    = agg.stream().mapToLong(m -> (Integer) m.get("cnt")).sum();
+        long daysWith   = agg.size();
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("userId", userId);
+        out.put("days", days);
+        out.put("from", from.toString());
+        out.put("to", to.toString());
+        out.put("totalCents", totalCents);
+        out.put("txCount", txCount);
+        out.put("daysWithData", daysWith);
+        out.put("avgPerDayCents", daysWith == 0 ? 0 : totalCents / daysWith);
+        out.put("avgPerTxCents", txCount == 0 ? 0 : totalCents / txCount);
+        return out;
+    }
+
+    public List<TopEntryDTO> getTopMerchantsByMonth(String month, int limit) {
+        String sql = "SELECT merchant_id, tx_count, amount_cents " +
+                     "FROM merchant_aggregates_by_period WHERE period='MONTH' AND period_key=?";
+        List<TopEntryDTO> all = cql.query(sql, ps -> ps.bind(month), (row, i) ->
+            TopEntryDTO.builder()
+                .id(row.getUuid("merchant_id"))
+                .label(null)
+                .txCount(row.getLong("tx_count"))
+                .amountCents(row.getLong("amount_cents"))
+                .build()
+        );
+        return all.stream()
+                  .sorted(Comparator.comparing(TopEntryDTO::getAmountCents).reversed())
+                  .limit(limit)
+                  .collect(Collectors.toList());
+        }
+
+    public List<TopEntryDTO> getTopCategoriesByMonth(String month, int limit) {
+        String sql = "SELECT category_id, tx_count, amount_cents " +
+                     "FROM category_aggregates_by_period WHERE period='MONTH' AND period_key=?";
+        List<TopEntryDTO> all = cql.query(sql, ps -> ps.bind(month), (row, i) ->
+            TopEntryDTO.builder()
+                .id(row.getUuid("category_id"))
+                .label(null)
+                .txCount(row.getLong("tx_count"))
+                .amountCents(row.getLong("amount_cents"))
+                .build()
+        );
+        return all.stream()
+                  .sorted(Comparator.comparing(TopEntryDTO::getAmountCents).reversed())
+                  .limit(limit)
+                  .collect(Collectors.toList());
+    }
+
+    public List<TopEntryDTO> getMostFrequentMerchantsForCategory(UUID categoryId, LocalDate date, int limit) {
+        String sql = "SELECT merchant_id, amount_cents FROM tx_by_category WHERE category_id=? AND tx_date=? LIMIT 10000";
+        Map<UUID, long[]> acc = new HashMap<>(); // [0]=count, [1]=sumCents
+
+        cql.query(sql, ps -> ps.bind(categoryId, date), (row, i) -> {
+            UUID m   = row.getUuid("merchant_id");
+            long amt = row.getLong("amount_cents");
+            long[] a = acc.computeIfAbsent(m, k -> new long[]{0L, 0L});
+            a[0]++; a[1] += amt;
+            return null;
+        });
+
+        return acc.entrySet().stream()
+            .map(e -> TopEntryDTO.builder()
+                    .id(e.getKey())
+                    .label(null)
+                    .txCount(e.getValue()[0])
+                    .amountCents(e.getValue()[1])
+                    .build())
+            .sorted(Comparator.<TopEntryDTO>comparingLong(TopEntryDTO::getTxCount).reversed()
+                    .thenComparing(Comparator.comparingLong(TopEntryDTO::getAmountCents).reversed()))
+            .limit(limit)
+            .collect(Collectors.toList());
     }
 }
