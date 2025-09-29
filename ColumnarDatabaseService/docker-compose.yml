@@ -1,0 +1,76 @@
+version: "3.9"
+
+services:
+  cassandra:
+    image: cassandra:4.1
+    container_name: cta-cassandra
+    ports:
+      - "9042:9042"
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "SHOW VERSION"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+
+  # Kreira keyspace pre startovanja app-a (schema radi app na startu)
+  cql-init:
+    image: cassandra:4.1
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    entrypoint:
+      [
+        "sh",
+        "-lc",
+        "cqlsh cassandra -e \"CREATE KEYSPACE IF NOT EXISTS nais WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};\""
+      ]
+    restart: "no"
+
+  redis:
+    image: redis:7
+    container_name: cta-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: columnar-db-service
+    depends_on:
+      cassandra:
+        condition: service_healthy
+      cql-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # gasimo Eureku dok ne dignemo ceo stack
+      EUREKA_CLIENT_ENABLED: "false"
+
+      # Cassandra (DNS ime servisa je 'cassandra' u docker mreži)
+      SPRING_DATA_CASSANDRA_CONTACT_POINTS: cassandra
+      SPRING_DATA_CASSANDRA_PORT: 9042
+      SPRING_DATA_CASSANDRA_LOCAL_DATACENTER: datacenter1
+      SPRING_DATA_CASSANDRA_KEYSPACE_NAME: nais
+
+      # Redis — NIKAKO localhost iz kontejnera; koristi ime servisa
+      SPRING_DATA_REDIS_HOST: cta-redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # SPRING_DATA_REDIS_PASSWORD: ""
+
+      # (opciono) ako želiš da ugasiš redis health check:
+      # MANAGEMENT_HEALTH_REDIS_ENABLED: "false"
+    ports:
+      - "9050:9050"
+
+volumes:
+  cassandra-data:

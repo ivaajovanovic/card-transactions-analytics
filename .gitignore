@@ -1,7 +1,89 @@
+# ----------------------------
+# OS / Editors
+# ----------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
 
-.metadata/*
-/.metadata/
+# ----------------------------
+# Java / Maven / Gradle
+# ----------------------------
+**/target/
+**/out/
+**/.classpath
+**/.project
+**/.settings/
+**/.factorypath
+**/.apt_generated/
+**/surefire-reports/
+**/failsafe-reports/
 
+# JVM dumps & logs
+hs_err_pid*
+replay_pid*
+*.hprof
+*.log
+logs/
+
+# Spring Boot pid files
+**/*.pid
+
+# Coverage / reports / sites
+**/jacoco.exec
+**/jacoco/
+**/coverage/
+**/site/
+
+# ----------------------------
+# App config (local-only)
+# ----------------------------
+# Keep your main application.yaml/properties in VCS.
+# Ignore ONLY local/override files if you use them.
+application-local.yml
+application-local.yaml
+application-local.properties
+
+# ----------------------------
+# Docker / Compose
+# ----------------------------
+.env
+docker-compose.override.yml
+
+# ----------------------------
+# Local data / volumes
+# ----------------------------
+# Ignore runtime data stores (Neo4j/Cassandra/ES/etc.)
+data/
+!data/.gitkeep
+
+# Optional common names for local volumes if you use them
+**/neo4j_data/
+**/cassandra_data/
+**/es_data/
+
+# ----------------------------
+# Security / Keys (never commit secrets)
+# ----------------------------
+*.keystore
+*.jks
+*.p12
+*.pem
+*.crt
+*.key
+
+# ----------------------------
+# Misc
+# ----------------------------
+*.orig
+*.rej
+*~
+=======
 .idea/*
 /.idea/
 
