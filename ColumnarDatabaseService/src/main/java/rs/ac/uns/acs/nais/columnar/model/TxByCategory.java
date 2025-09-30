@@ -4,14 +4,13 @@ package rs.ac.uns.acs.nais.columnar.model;
 import lombok.*;
 import org.springframework.data.cassandra.core.mapping.*;
 
-import java.time.Instant;
 import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("tx_by_category")
+@Table("transactions_by_category")
 public class TxByCategory {
 
     @PrimaryKey
@@ -24,5 +23,4 @@ public class TxByCategory {
     @Column("amount_cents") private Long amountCents;
     @Column("currency")     private String currency;
     @Column("status")       private String status;
-    @Column("occurred_at")  private Instant occurredAt;
 }

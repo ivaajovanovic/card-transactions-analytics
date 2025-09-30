@@ -14,7 +14,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("user_daily_total")
+@Table("user_daily_totals")
 public class UserDailyTotal {
 
     @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED)

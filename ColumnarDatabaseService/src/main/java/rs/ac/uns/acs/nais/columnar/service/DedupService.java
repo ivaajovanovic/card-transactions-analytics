@@ -13,18 +13,29 @@ import java.util.UUID;
 public class DedupService {
 
     private final CqlSession session;
-    private final PreparedStatement insertIfNotExists;
+    private volatile PreparedStatement insertIfNotExists;
 
     public DedupService(CqlSession session) {
         this.session = session;
-        this.insertIfNotExists = session.prepare(
-            "INSERT INTO tx_dedup (tx_id, seen_at) VALUES (?, ?) IF NOT EXISTS"
-        );
+        // Don't prepare statement in constructor - prepare it lazily
+    }
+
+    private PreparedStatement getInsertStatement() {
+        if (insertIfNotExists == null) {
+            synchronized (this) {
+                if (insertIfNotExists == null) {
+                    insertIfNotExists = session.prepare(
+                        "INSERT INTO tx_dedup (tx_id, seen_at) VALUES (?, ?) IF NOT EXISTS"
+                    );
+                }
+            }
+        }
+        return insertIfNotExists;
     }
 
     /** @return true ako je prvi put viđen tx_id, false ako je duplikat */
     public boolean tryMarkSeen(UUID txId) {
-        BoundStatement bs = insertIfNotExists.bind(txId, Instant.now());
+        BoundStatement bs = getInsertStatement().bind(txId, Instant.now());
         ResultSet rs = session.execute(bs);
         return rs.wasApplied();
     }

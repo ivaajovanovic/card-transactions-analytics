@@ -1,8 +1,8 @@
 -- KEYSPACE
-CREATE KEYSPACE IF NOT EXISTS card_analytics
+CREATE KEYSPACE IF NOT EXISTS nais
 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
-USE card_analytics;
+USE nais;
 
 -- 1) transactions_by_user  (partition=user_id, cluster=tx_date, tx_time DESC)
 CREATE TABLE IF NOT EXISTS transactions_by_user (
@@ -77,3 +77,10 @@ CREATE TABLE IF NOT EXISTS user_daily_totals (
   day_amount_cents bigint,
   PRIMARY KEY ((user_id), tx_date)
 ) WITH CLUSTERING ORDER BY (tx_date DESC);
+
+-- 7) tx_dedup (idempotencija - table za duplicate detection)
+CREATE TABLE IF NOT EXISTS tx_dedup (
+  tx_id         uuid,
+  seen_at       timestamp,
+  PRIMARY KEY (tx_id)
+);
