@@ -11,6 +11,7 @@ import rs.ac.uns.acs.nais.ElasticSearchDatabaseService.model.UserActivity;
 import rs.ac.uns.acs.nais.ElasticSearchDatabaseService.service.UserActivityService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -19,6 +20,18 @@ import java.util.Optional;
 public class UserActivityController {
     
     private final UserActivityService userActivityService;
+    
+    /**
+     * Simple health check endpoint
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of(
+            "status", "UP",
+            "service", "ElasticSearch Database Service",
+            "timestamp", java.time.Instant.now().toString()
+        ));
+    }
     
     @PostMapping
     public ResponseEntity<UserActivity> createUserActivity(@RequestBody UserActivity userActivity) {
@@ -140,5 +153,31 @@ public class UserActivityController {
     public ResponseEntity<Void> deleteAllUserActivities() {
         userActivityService.deleteAllUserActivities();
         return ResponseEntity.noContent().build();
+    }
+    
+    // ========== SAGA ENDPOINTS ==========
+    
+    /**
+     * SAGA Endpoint: Ažurira UserActivity sa suspicious transaction podacima
+     * Poziva ga Graph DB servis kao deo distributed transaction
+     */
+    @PostMapping("/update-suspicious")
+    public ResponseEntity<Boolean> updateSuspiciousActivity(@RequestBody Map<String, Object> request) {
+        String userId = (String) request.get("userId");
+        Long suspiciousCount = Long.valueOf(request.get("suspiciousTransactionCount").toString());
+        
+        boolean success = userActivityService.updateSuspiciousActivity(userId, suspiciousCount);
+        return ResponseEntity.ok(success);
+    }
+    
+    /**
+     * SAGA Rollback Endpoint: Uklanja suspicious activity informacije
+     */
+    @PostMapping("/rollback-suspicious")
+    public ResponseEntity<Boolean> rollbackSuspiciousActivity(@RequestBody Map<String, Object> request) {
+        String userId = (String) request.get("userId");
+        
+        boolean success = userActivityService.rollbackSuspiciousActivity(userId);
+        return ResponseEntity.ok(success);
     }
 }
