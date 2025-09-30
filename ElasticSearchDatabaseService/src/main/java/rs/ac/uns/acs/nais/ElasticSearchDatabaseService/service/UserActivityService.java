@@ -97,4 +97,66 @@ public class UserActivityService {
     public long count() {
         return userActivityRepository.count();
     }
+    
+    /**
+     * SAGA Method: Ažurira UserActivity sa informacijama o sumnjivim transakcijama
+     * Deo distributed transaction-a sa Graph DB servisom
+     */
+    public boolean updateSuspiciousActivity(String userId, Long suspiciousCount) {
+        try {
+            log.info("Updating suspicious activity for user {} with {} suspicious transactions", userId, suspiciousCount);
+            
+            Optional<UserActivity> existingActivity = findById(userId);
+            UserActivity activity;
+            
+            if (existingActivity.isPresent()) {
+                activity = existingActivity.get();
+            } else {
+                // Kreiraj novi ako ne postoji
+                activity = new UserActivity();
+                activity.setUserId(userId);
+                activity.setTxCount(0);
+                activity.setTotalSpent(0.0);
+            }
+            
+            // Ažuriraj suspicious activity fields
+            activity.setSuspiciousTransactionCount(suspiciousCount.intValue());
+            activity.setHasSuspiciousActivity(suspiciousCount > 0);
+            activity.setLastSuspiciousActivityDate(java.time.Instant.now().toString());
+            
+            userActivityRepository.save(activity);
+            log.info("Successfully updated suspicious activity for user {}", userId);
+            return true;
+            
+        } catch (Exception e) {
+            log.error("Failed to update suspicious activity for user {}: {}", userId, e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * SAGA Rollback Method: Uklanja suspicious activity informacije
+     */
+    public boolean rollbackSuspiciousActivity(String userId) {
+        try {
+            log.info("Rolling back suspicious activity for user {}", userId);
+            
+            Optional<UserActivity> existingActivity = findById(userId);
+            if (existingActivity.isPresent()) {
+                UserActivity activity = existingActivity.get();
+                activity.setSuspiciousTransactionCount(0);
+                activity.setHasSuspiciousActivity(false);
+                activity.setLastSuspiciousActivityDate(null);
+                
+                userActivityRepository.save(activity);
+                log.info("Successfully rolled back suspicious activity for user {}", userId);
+            }
+            
+            return true;
+            
+        } catch (Exception e) {
+            log.error("Failed to rollback suspicious activity for user {}: {}", userId, e.getMessage(), e);
+            return false;
+        }
+    }
 }
