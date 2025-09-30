@@ -163,3 +163,5 @@ data/
 target/
 */target/
 **/target/
+
+*.pdf

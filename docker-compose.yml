@@ -202,6 +202,8 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
     ports:
       - "9080:9080"
+    volumes:
+      - ./output:/app/output
 
   # ---------- Kibana & Grafana ----------
   kibana:

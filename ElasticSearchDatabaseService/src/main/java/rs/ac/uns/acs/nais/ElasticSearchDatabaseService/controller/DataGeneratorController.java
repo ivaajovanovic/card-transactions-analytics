@@ -14,9 +14,9 @@ public class DataGeneratorController {
     
     @PostMapping("/transactions/{count}")
     public ResponseEntity<String> generateTransactions(@PathVariable int count) {
-        if (count <= 0 || count > 10000) {
+        if (count <= 0 || count > 100000) {
             return ResponseEntity.badRequest()
-                    .body("Count must be between 1 and 10000");
+                    .body("Count must be between 1 and 100000");
         }
         
         dataGeneratorService.generateSampleTransactions(count);
@@ -25,9 +25,9 @@ public class DataGeneratorController {
     
     @PostMapping("/user-activities/{count}")
     public ResponseEntity<String> generateUserActivities(@PathVariable int count) {
-        if (count <= 0 || count > 1000) {
+        if (count <= 0 || count > 5000) {
             return ResponseEntity.badRequest()
-                    .body("Count must be between 1 and 1000");
+                    .body("Count must be between 1 and 5000");
         }
         
         dataGeneratorService.generateSampleUserActivities(count);
@@ -37,6 +37,6 @@ public class DataGeneratorController {
     @PostMapping("/sample-data")
     public ResponseEntity<String> generateSampleData() {
         dataGeneratorService.generateSampleData();
-        return ResponseEntity.ok("Generated sample data (1000 transactions, 1000 user activities) successfully");
+        return ResponseEntity.ok("Generated sample data (15000 transactions, 3000 user activities) successfully");
     }
 }

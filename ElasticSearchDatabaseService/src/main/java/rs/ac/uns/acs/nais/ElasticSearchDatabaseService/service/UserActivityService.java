@@ -10,6 +10,7 @@ import rs.ac.uns.acs.nais.ElasticSearchDatabaseService.repository.UserActivityRe
 
 import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +34,9 @@ public class UserActivityService {
     }
     
     public List<UserActivity> findAll() {
-        return (List<UserActivity>) userActivityRepository.findAll();
+        List<UserActivity> userActivities = new ArrayList<>();
+        userActivityRepository.findAll().forEach(userActivities::add);
+        return userActivities;
     }
     
     public List<UserActivity> findByTransactionCountRange(Integer minCount, Integer maxCount) {
