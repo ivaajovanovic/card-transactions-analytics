@@ -11,6 +11,7 @@ import rs.ac.uns.acs.nais.ElasticSearchDatabaseService.repository.TransactionRep
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
