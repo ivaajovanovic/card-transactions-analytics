@@ -169,15 +169,23 @@ try {
     Write-Host "   Total transakcija: $($verifyResult.basic_statistics.total_transactions_in_system)" -ForegroundColor White
     Write-Host "   Ukupan iznos: $($verifyResult.basic_statistics.total_amount_in_system_rsd) RSD" -ForegroundColor White
     
-    # Generiši PDF za finalni izveštaj
-    Write-Host "-> Generisem finalni PDF izvestaj..." -ForegroundColor Cyan
+    # Generiši HTML za finalni izveštaj
+    Write-Host "-> Generisem finalni HTML izvestaj..." -ForegroundColor Cyan
     $pdf = Invoke-WebRequest -Uri "http://localhost:9050/api/reports/complex/analytics/pdf" -Method GET
     if ($pdf.StatusCode -eq 200) {
         $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-        $pdfPath = ".\CRUD_FINAL_SUCCESS_$timestamp.pdf"
-        [System.IO.File]::WriteAllBytes($pdfPath, $pdf.Content)
-        Write-Host "[SUCCESS] PDF GENERATION: $pdfPath" -ForegroundColor Green
+        $htmlPath = ".\CRUD_FINAL_SUCCESS_$timestamp.html"
+        [System.IO.File]::WriteAllBytes($htmlPath, $pdf.Content)
+        Write-Host "[SUCCESS] HTML GENERATION: $htmlPath" -ForegroundColor Green
         Write-Host "   Velicina: $($pdf.Content.Length) bytes" -ForegroundColor White
+        
+        # Otvori HTML u browser-u
+        try {
+            Start-Process $htmlPath
+            Write-Host "   HTML izvestaj otvoren u browser-u!" -ForegroundColor Green
+        } catch {
+            Write-Host "   HTML fajl kreiran (rucno otvori: $htmlPath)" -ForegroundColor Yellow
+        }
     }
     
 } catch {
@@ -206,7 +214,7 @@ Write-Host "   * CREATE kreira nove transakcije sa validnim TransactionDTO" -For
 Write-Host "   * READ vraca kompletne analytics sa 4 sekcije" -ForegroundColor White
 Write-Host "   * UPDATE radi UPSERT semantiku (amount i complete)" -ForegroundColor White
 Write-Host "   * DELETE radi soft delete (status='DELETED')" -ForegroundColor White
-Write-Host "   * PDF generation radi besprekorno" -ForegroundColor White
+Write-Host "   * HTML generation radi besprekorno" -ForegroundColor White
 Write-Host ""
 Write-Host "AKADEMSKI ZAHTEVI 100% ISPUNJENI!" -ForegroundColor Green
 Write-Host "CASSANDRA COLUMNAR DATABASE - KOMPLETNA CRUD FUNKCIONALNOST" -ForegroundColor Green

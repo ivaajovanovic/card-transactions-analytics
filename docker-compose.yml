@@ -61,9 +61,9 @@ services:
         condition: service_started
       elastic-search-service:
         condition: service_started
+      cassandradb:
+        condition: service_started
     restart: on-failure
-    extra_hosts:
-      - "cassandradb:192.168.56.1"
     environment:
       # Spring Profile
       SPRING_PROFILES_ACTIVE: docker
