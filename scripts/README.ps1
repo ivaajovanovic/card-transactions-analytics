@@ -50,3 +50,5 @@ cd scripts
 .\1-populate-database.ps1    # Popunjava bazu
 .\2-test-crud-operations.ps1 # CRUD + HTML izveštaj
 .\3-test-saga-pattern.ps1    # Saga Pattern testovi
+
+Start-Process ".\CRUD_FINAL_SUCCESS_20250930_155223.html"
