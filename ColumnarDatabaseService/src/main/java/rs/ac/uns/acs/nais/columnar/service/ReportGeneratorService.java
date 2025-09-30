@@ -58,25 +58,25 @@ public class ReportGeneratorService {
         
         // Dodajemo primer podataka
         transactions.add(ReportResponseDTO.TransactionSummary.builder()
-                .txId("TX-001")
+                .transactionId("TX-001")
                 .userId("USER-001")
                 .merchantId("MERCHANT-001")
                 .categoryId("CATEGORY-001")
                 .amount(150.0) // 150.00 RSD
                 .currency("RSD")
                 .status("COMPLETED")
-                .occurredAt(request.getStartDate().atStartOfDay())
+                .timestamp(request.getStartDate().atStartOfDay().toString())
                 .build());
                 
         transactions.add(ReportResponseDTO.TransactionSummary.builder()
-                .txId("TX-002")
+                .transactionId("TX-002")
                 .userId("USER-002")
                 .merchantId("MERCHANT-002")
                 .categoryId("CATEGORY-002")
                 .amount(250.0) // 250.00 RSD
                 .currency("RSD")
                 .status("COMPLETED")
-                .occurredAt(request.getStartDate().atStartOfDay())
+                .timestamp(request.getStartDate().atStartOfDay().toString())
                 .build());
 
         return builder

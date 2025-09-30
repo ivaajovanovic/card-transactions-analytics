@@ -1,0 +1,74 @@
+# DELETE OPERATIONS TEST FILE
+# Test sve DELETE endpoint-e za Cassandra tabele
+
+### 1. Testiranje brisanja pojedinačne transakcije po korisniku
+DELETE http://localhost:9050/api/reports/user/770e8400-e29b-41d4-a716-446655440001/transaction?date=2025-09-01&transactionId=550e8400-e29b-41d4-a716-446655440001
+
+###
+
+### 2. Testiranje brisanja pojedinačne transakcije po merchant-u
+DELETE http://localhost:9050/api/reports/merchant/Merchant-001/transaction?date=2025-09-01&transactionId=550e8400-e29b-41d4-a716-446655440001
+
+###
+
+### 3. Testiranje brisanja pojedinačne transakcije po kategoriji
+DELETE http://localhost:9050/api/reports/category/Elektronika/transaction?date=2025-09-01&transactionId=550e8400-e29b-41d4-a716-446655440001
+
+###
+
+### 4. Testiranje brisanja dnevnih totala za korisnika
+DELETE http://localhost:9050/api/reports/user/770e8400-e29b-41d4-a716-446655440001/daily-total?date=2025-09-01
+
+###
+
+### 5. Testiranje brisanja merchant agregata
+DELETE http://localhost:9050/api/reports/merchant/Merchant-001/aggregate
+
+###
+
+### 6. Testiranje brisanja category agregata
+DELETE http://localhost:9050/api/reports/category/Elektronika/aggregate
+
+###
+
+### 7. Testiranje potpunog brisanja transakcije iz svih tabela
+DELETE http://localhost:9050/api/reports/transaction/complete?transactionId=550e8400-e29b-41d4-a716-446655440001&userId=770e8400-e29b-41d4-a716-446655440001&merchantId=Merchant-001&categoryId=Elektronika&date=2025-09-01
+
+###
+
+### 8. Testiranje brisanja svih transakcija za korisnika
+DELETE http://localhost:9050/api/reports/user/770e8400-e29b-41d4-a716-446655440001/all
+
+###
+
+### 9. Testiranje brisanja svih transakcija za merchant-a
+DELETE http://localhost:9050/api/reports/merchant/Merchant-001/all
+
+###
+
+### 10. Testiranje brisanja svih transakcija za kategoriju
+DELETE http://localhost:9050/api/reports/category/Elektronika/all
+
+###
+
+### 11. Testiranje brisanja svih dnevnih totala za korisnika
+DELETE http://localhost:9050/api/reports/user/770e8400-e29b-41d4-a716-446655440001/daily-totals/all
+
+###
+
+### 12. OPASNO: Brisanje svih podataka (za testiranje)
+DELETE http://localhost:9050/api/reports/all-data?confirm=yes
+
+###
+
+### Dodavanje informativnih GET endpoint-a za verifikaciju
+
+### Provera korisničkih transakcija
+GET http://localhost:9050/api/reports/complex/analytics?from=2025-08-30&to=2025-09-30
+
+###
+
+### Test endpoint
+GET http://localhost:9050/api/reports/test
+
+###

@@ -34,6 +34,7 @@ public class ReportResponseDTO {
     // PDF/Grafana podaci
     private String downloadUrl;
     private byte[] pdfContent;
+    private String summary; // Kratak opis izveštaja
     
     @Data
     @Builder
@@ -48,14 +49,15 @@ public class ReportResponseDTO {
     @Data
     @Builder
     public static class TransactionSummary {
-        private String txId;
+        private String transactionId; // Umesto txId
         private String userId;
         private String merchantId;
+        private String merchantName; // Dodano za merchant name
         private String categoryId;
         private Double amount;
         private String currency;
         private String status;
-        private LocalDateTime occurredAt;
+        private String timestamp; // Umesto LocalDateTime
     }
     
     @Data
