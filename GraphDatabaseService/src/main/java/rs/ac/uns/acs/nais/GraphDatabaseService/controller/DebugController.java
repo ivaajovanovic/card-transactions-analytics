@@ -12,140 +12,72 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DebugController {
     
-    private final Neo4jClient neo4j;
+    private final Neo4jClient neo4jClient;
     
-    /**
-     * Debug endpoint da vidimo kako izgledaju relationship-i u bazi
-     */
-    @GetMapping("/relationships")
-    public ResponseEntity<?> checkRelationships() {
+    @PostMapping("/create-test-transactions")
+    public ResponseEntity<Map<String, Object>> createTestTransactions(@RequestParam String email) {
+        String query = """
+            MATCH (u:User {email: $email})
+            MATCH (m:Merchant)
+            WITH u, collect(m)[0..10] as merchants
+            UNWIND range(1, 2) as cardNum
+            CREATE (c:Card {
+                panHash: 'TESTCARD' + u.externalId + cardNum,
+                network: 'VISA',
+                type: 'CREDIT',
+                issuerCountry: u.homeCountry,
+                monthlyLimit: 5000.0
+            })
+            // Important: OWNS points from Card to User to match queries (u)<-[:OWNS]-(c)
+            CREATE (c)-[:OWNS]->(u)
+            WITH c, merchants
+            UNWIND merchants as merchant
+            UNWIND range(1, 4) as txNum
+            CREATE (c)-[:TRANSACTED_WITH {
+                amount: 50.0 + (txNum * 10.0),
+                currency: 'USD',
+                timestamp: datetime('2024-06-15T12:00:00Z'),
+                status: 'SUCCESS',
+                channel: 'IN_STORE',
+                purpose: 'GOODS',
+                paymentType: 'CARD_PRESENT',
+                contactless: true
+            }]->(merchant)
+            RETURN count(*) as transactionsCreated
+            """;
         
-        // Proveri kako izgledaju SPENT_ON relationship-i
-        var spentOnData = neo4j.query("""
-            MATCH (t:Transaction)-[s:SPENT_ON]->(m:Merchant)
-            RETURN t.id AS txId, s.channel AS channel, s.cardPresent AS cardPresent, m.name AS merchant
-            LIMIT 10
-            """)
-            .fetch()
-            .all();
-        
-        // Proveri kako izgledaju MADE_WITH relationship-i
-        var madeWithData = neo4j.query("""
-            MATCH (t:Transaction)-[:MADE_WITH]->(c:Card)
-            RETURN t.id AS txId, c.id AS cardId
-            LIMIT 10
-            """)
-            .fetch()
-            .all();
-        
-        // Proveri cross-channel raw podatke
-        var crossChannelDebug = neo4j.query("""
-            MATCH (u:User)-[:OWNS]->(c:Card)<-[:MADE_WITH]-(t:Transaction)-[s:SPENT_ON]->(m:Merchant)
-            WITH u.name AS user, m.name AS merchant, collect({channel: s.channel, ts: t.ts}) AS transactions
-            WHERE size(transactions) > 1
-            RETURN user, merchant, transactions
-            LIMIT 5
-            """)
-            .fetch()
-            .all();
-        
-        return ResponseEntity.ok(Map.of(
-            "spentOnRelationships", spentOnData,
-            "madeWithRelationships", madeWithData,
-            "crossChannelDebug", crossChannelDebug,
-            "message", "Debug data from Neo4j relationships"
-        ));
+        try {
+            var result = neo4jClient.query(query)
+                .bind(email).to("email")
+                .fetchAs(Long.class)
+                .one()
+                .orElse(0L);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Created test transactions",
+                "email", email,
+                "transactionsCreated", result
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage()
+            ));
+        }
     }
-    
-    /**
-     * Debug endpoint za analytics test
-     */
-    @GetMapping("/analytics-test")
-    public ResponseEntity<?> testAnalytics(@RequestParam(defaultValue = "U_1") String userId) {
-        
-        // Test osnovni upit
-        var basicQuery = neo4j.query("""
-            MATCH (u:User {id:$userId})-[:OWNS]->(c:Card)<-[:MADE_WITH]-(t:Transaction)-[s:SPENT_ON]->(m:Merchant)
-            RETURN u.name AS user, c.id AS card, t.id AS transaction, s.channel AS channel, m.name AS merchant
-            LIMIT 10
-            """)
-            .bindAll(Map.of("userId", userId))
-            .fetch()
-            .all();
-        
-        return ResponseEntity.ok(Map.of(
-            "userId", userId,
-            "basicQuery", basicQuery,
-            "message", "Analytics test for user " + userId
-        ));
-    }
-    
-    /**
-     * Debug endpoint za proveravenje iznosa transakcija
-     */
-    @GetMapping("/transaction-amounts")
-    public ResponseEntity<?> checkTransactionAmounts() {
-        
-        // Ukupan broj transakcija
-        var totalCount = neo4j.query("MATCH (t:Transaction) RETURN count(t) AS count")
-            .fetchAs(Long.class)
-            .one()
-            .orElse(0L);
-            
-        // Min, max, avg iznos
-        var amountStats = neo4j.query("""
-            MATCH (t:Transaction) 
-            RETURN min(t.amount) AS min, max(t.amount) AS max, avg(t.amount) AS avg
-            """)
-            .fetch()
-            .one();
-            
-        // Transakcije sa visokim iznosima (> 5000)
-        var highAmountTx = neo4j.query("""
-            MATCH (t:Transaction)
-            WHERE t.amount > 5000
-            RETURN t.id AS txId, t.amount AS amount
-            LIMIT 10
-            """)
-            .fetch()
-            .all();
-            
-        // Transakcije sa niskim iznosima (< 10)
-        var lowAmountTx = neo4j.query("""
-            MATCH (t:Transaction)
-            WHERE t.amount < 10
-            RETURN t.id AS txId, t.amount AS amount
-            LIMIT 10
-            """)
-            .fetch()
-            .all();
-            
-        // Distribucija iznosa transakcija
-        var amountDistribution = neo4j.query("""
-            MATCH (t:Transaction)
-            WITH 
-              CASE 
-                WHEN t.amount < 10 THEN 'Very Low (<10)'
-                WHEN t.amount >= 10 AND t.amount < 100 THEN 'Low (10-100)'
-                WHEN t.amount >= 100 AND t.amount < 1000 THEN 'Medium (100-1000)'
-                WHEN t.amount >= 1000 AND t.amount <= 5000 THEN 'High (1000-5000)'
-                WHEN t.amount > 5000 THEN 'Very High (>5000)'
-                ELSE 'Unknown'
-              END AS range,
-              count(*) AS count
-            RETURN range, count
-            ORDER BY count DESC
-            """)
-            .fetch()
-            .all();
 
-        return ResponseEntity.ok(Map.of(
-            "message", "Transaction amounts analysis",
-            "totalTransactions", totalCount,
-            "amountStats", amountStats,
-            "highAmountTransactions", highAmountTx,
-            "lowAmountTransactions", lowAmountTx,
-            "amountDistribution", amountDistribution
-        ));
+    @GetMapping("/user-stats")
+    public ResponseEntity<Map<String, Object>> userStats(@RequestParam String email) {
+        String q = """
+            MATCH (u:User {email:$email})
+            OPTIONAL MATCH (u)<-[:OWNS]-(c:Card)
+            WITH u, collect(c) AS cards
+            OPTIONAL MATCH (c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
+            WHERE c IN cards
+            RETURN size(cards) AS cardsCount, count(t) AS txCount
+        """;
+        var rec = neo4jClient.query(q)
+                .bind(email).to("email")
+                .fetch().one().orElse(Map.of("cardsCount",0L,"txCount",0L));
+        return ResponseEntity.ok(rec);
     }
 }

@@ -1,50 +1,30 @@
 package rs.ac.uns.acs.nais.GraphDatabaseService.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import rs.ac.uns.acs.nais.GraphDatabaseService.model.Category;
-import rs.ac.uns.acs.nais.GraphDatabaseService.service.ICategoryService;
+import rs.ac.uns.acs.nais.GraphDatabaseService.model.CategoryNode;
+import rs.ac.uns.acs.nais.GraphDatabaseService.repository.CategoryRepository;
 
-import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
 public class CategoryController {
-
-    private final ICategoryService categoryService;
-
-    @PostMapping
-    public ResponseEntity<Category> create(@RequestBody Category c) {
-        Category saved = categoryService.create(c);
-        return ResponseEntity
-                .created(URI.create("/api/categories/" + saved.getId()))
-                .body(saved);
-    }
+    private final CategoryRepository repo;
 
     @GetMapping
-    public ResponseEntity<List<Category>> findAll() {
-        return ResponseEntity.ok(categoryService.list());
-    }
+    public List<CategoryNode> all() { return repo.findAll(); }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Category> findById(@PathVariable String id) {
-        return categoryService.get(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
+    public CategoryNode get(@PathVariable Long id) { return repo.findById(id).orElseThrow(); }
+
+    @PostMapping
+    public CategoryNode create(@RequestBody CategoryNode category) { return repo.save(category); }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Category> update(@PathVariable String id, @RequestBody Category c) {
-        c.setId(id);
-        return ResponseEntity.ok(categoryService.update(c));
-    }
+    public CategoryNode update(@PathVariable Long id, @RequestBody CategoryNode category) { category.setId(id); return repo.save(category); }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        categoryService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
+    public void delete(@PathVariable Long id) { repo.deleteById(id); }
 }

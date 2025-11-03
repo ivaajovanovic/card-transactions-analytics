@@ -1,14 +1,17 @@
 server:
-  port: 9050
+  port: 8083
 
 spring:
+  application:
+    name: GraphDatabaseService
   neo4j:
     uri: bolt://localhost:7687
     authentication:
       username: neo4j
       password: password
-  application:
-    name: graph-database-service
+  jackson:
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
 
 eureka:
   client:
@@ -16,6 +19,8 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
       healthcheck:
         enabled: true
+    fetch-registry: true
+    register-with-eureka: true
   instance:
     prefer-ip-address: true
 

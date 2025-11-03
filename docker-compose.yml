@@ -26,14 +26,33 @@ services:
     depends_on:
       eureka-server:
         condition: service_started
-      elastic-search-service:
-        condition: service_started
       graph-service:
-        condition: service_started
-      columnar-key-value-service:
         condition: service_started
     ports:
       - "9003:9000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: card-transactions-frontend:latest
+    environment:
+      NEXT_PUBLIC_API_URL: http://graph-service:9001
+    depends_on:
+      graph-service:
+        condition: service_started
+      gateway-api:
+        condition: service_started
+    ports:
+      - "3001:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
 
 
 
@@ -42,6 +61,8 @@ services:
        context: ./ColumnarDatabaseService
        dockerfile: Dockerfile
      image: columnar-key-value-service:latest
+     profiles:
+       - columnar
      depends_on:
        cassandradb:
          condition: service_healthy
@@ -65,6 +86,8 @@ services:
 
   cassandradb:
      image: cassandra:latest
+     profiles:
+       - columnar
      ports:
        - "9042:9042"
      volumes:
@@ -126,6 +149,8 @@ services:
        dockerfile: Dockerfile
        network: host
      image: elastic-spring-example:latest
+     profiles:
+       - observability
      restart: on-failure
      depends_on:
        eureka-server:
@@ -169,14 +194,16 @@ services:
           cpus: '0.5'
   
   elasticsearch:
-     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-     container_name: elasticsearch
-     restart: always
-     ports:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch
+    profiles:
+      - observability
+    restart: always
+    ports:
        - ${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}
-     env_file:
+    env_file:
        - .env
-     environment:
+    environment:
        - xpack.security.enabled=false
        - discovery.type=single-node
        - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
@@ -194,17 +221,17 @@ services:
        - network.host=0.0.0.0
        - http.port=9200
        - transport.port=9300
-     ulimits:
+    ulimits:
        memlock:
          soft: -1
          hard: -1
-     healthcheck:
+    healthcheck:
        test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=10s || exit 1"]
        interval: 30s
        timeout: 15s
        retries: 10
        start_period: 60s
-     deploy:
+    deploy:
        resources:
          limits:
            memory: 1.3G
@@ -218,6 +245,8 @@ services:
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.1
     container_name: kibana
+    profiles:
+      - observability
     restart: always
     ports:
       - "5601:5601"
@@ -232,6 +261,8 @@ services:
   grafana:
     image: grafana/grafana-enterprise
     container_name: grafana
+    profiles:
+      - observability
     restart: unless-stopped
     environment:
       - GF_SERVER_ROOT_URL=http://my.grafana.server/

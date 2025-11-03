@@ -1,60 +1,48 @@
 package rs.ac.uns.acs.nais.GraphDatabaseService.controller;
 
-import lombok.RequiredArgsConstructor;
+import rs.ac.uns.acs.nais.GraphDatabaseService.model.*;
+import rs.ac.uns.acs.nais.GraphDatabaseService.dto.ErrorResponse;
+import rs.ac.uns.acs.nais.GraphDatabaseService.service.TransactionService;
+import lombok.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import rs.ac.uns.acs.nais.GraphDatabaseService.model.Transaction;
-import rs.ac.uns.acs.nais.GraphDatabaseService.service.ITransactionService;
-
-import java.net.URI;
-import java.util.List;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
 public class TransactionController {
+    private final TransactionService txService;
 
-  private final ITransactionService txService;
+    @PostMapping("/ingest")
+    public ResponseEntity<?> ingest(@RequestBody @Validated IngestRequest req) {
+        try {
+            txService.ensureUserAndCard(req.getUser(), req.getCard());
+            txService.ensureMerchantAndCategory(req.getMerchant(), req.getCategory(), req.getRegion());
+            txService.addTransaction(req.getCard().getPanHash(), req.getMerchant().getMerchantId(), req.getTxn());
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
+    }
 
-  @PostMapping
-  public ResponseEntity<Transaction> create(@RequestBody Transaction t) {
-    Transaction saved = txService.create(t);
-    return ResponseEntity.created(URI.create("/api/transactions/" + saved.getId())).body(saved);
-  }
+    @GetMapping("/limit-check/{panHash}")
+    public ResponseEntity<?> limitCheck(@PathVariable String panHash,
+                                        @RequestParam Instant from,
+                                        @RequestParam Instant to,
+                                        @RequestParam double incomingAmount) {
+        boolean ok = txService.checkCardLimit(panHash, from, to, incomingAmount);
+        return ResponseEntity.ok(ok);
+    }
 
-  @GetMapping
-  public ResponseEntity<List<Transaction>> findAll() {
-    return ResponseEntity.ok(txService.list());
-  }
-
-  @GetMapping("/{id}")
-  public ResponseEntity<Transaction> findById(@PathVariable String id) {
-    return txService.get(id).map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
-  }
-
-  @PutMapping("/{id}")
-  public ResponseEntity<Transaction> update(@PathVariable String id, @RequestBody Transaction t) {
-    t.setId(id);
-    return ResponseEntity.ok(txService.update(t));
-  }
-
-  @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@PathVariable String id) {
-    txService.delete(id);
-    return ResponseEntity.noContent().build();
-  }
-
-  // --- RELACIJE: PROCESSED_AT (Transaction -> Merchant) ---
-  @PostMapping("/{txId}/processed-at/{merchantId}")
-  public ResponseEntity<Void> processedAt(@PathVariable String txId, @PathVariable String merchantId) {
-    txService.processedAt(txId, merchantId);
-    return ResponseEntity.noContent().build();
-  }
-
-  @DeleteMapping("/{txId}/processed-at")
-  public ResponseEntity<Void> unsetProcessedAt(@PathVariable String txId) {
-    txService.unsetProcessedAt(txId);
-    return ResponseEntity.noContent().build();
-  }
+    @Data
+    public static class IngestRequest {
+        private UserNode user;
+        private CardNode card;
+        private MerchantNode merchant;
+        private CategoryNode category;
+        private RegionNode region;
+        private TransactionRel txn;
+    }
 }

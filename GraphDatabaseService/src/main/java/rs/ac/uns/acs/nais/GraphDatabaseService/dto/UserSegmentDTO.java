@@ -1,0 +1,14 @@
+package rs.ac.uns.acs.nais.GraphDatabaseService.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserSegmentDTO {
+    private String name;
+    private Long value;
+    private Double percentage;
+}
