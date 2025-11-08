@@ -1,6 +1,9 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9001'
 
 export class ApiClient {
+  async getUserTransactionsByEmail(email: string): Promise<any[]> {
+    return this.request(`/api/users/by-email/${encodeURIComponent(email)}/transactions`)
+  }
   private baseUrl: string
 
   constructor() {
@@ -261,8 +264,42 @@ export class ApiClient {
   }
 
   async getMerchantTransactionsByEmail(email: string, limit: number = 50, offset: number = 0): Promise<any[]> {
-    return this.request(`/api/merchants/by-email/${encodeURIComponent(email)}/transactions?limit=${limit}&offset=${offset}`)
+  return this.request(`/api/merchants/by-email/${encodeURIComponent(email)}/transactions`)
   }
+
+  async getAdminSuspiciousTransactions(minMultiplier: number = 2.5): Promise<any[]> {
+  return this.request(`/api/admin/anomalies/suspicious-transactions?minMultiplier=${minMultiplier}`)
+}
+
+async getAllUsers(): Promise<any[]> {
+  return this.request('/api/admin/users')
+}
+
+async getPurchaseProbability(merchantId: string, limit: number = 20): Promise<any[]> {
+  return this.request(`/api/admin/predictions/merchant-purchase-probability/${merchantId}?limit=${limit}`)
+}
+
+async getRegionalPerformance(): Promise<any[]> {
+  return this.request('/api/admin/analytics/regional-performance')
+}
+
+async getShoppingAffinity(): Promise<any[]> {
+  return this.request('/api/admin/analytics/shopping-affinity')
+}
+
+async getCrossRegionPatterns(limit: number = 10): Promise<any[]> {
+  return this.request(`/api/admin/analytics/cross-region-patterns?limit=${limit}`)
+}
+
+async getAdminOptimalPurchaseTime(): Promise<any[]> {
+  return this.request('/api/admin/analytics/optimal-purchase-time')
+}
+
+async listAllMerchants() : Promise<any[]> {
+  return this.request('/api/merchants/all')
+}
+
+
 }
 
 export const apiClient = new ApiClient()

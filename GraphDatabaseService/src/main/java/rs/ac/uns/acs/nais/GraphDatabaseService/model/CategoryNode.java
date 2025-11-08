@@ -15,5 +15,5 @@ public class CategoryNode {
     
     private String code; // e.g., MCC
     private String name;
-    private String parentCode; // allow simple hierarchy rollups
+    private String parentCode; 
 }

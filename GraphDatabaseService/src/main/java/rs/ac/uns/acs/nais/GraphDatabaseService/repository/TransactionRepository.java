@@ -7,11 +7,11 @@ import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @org.springframework.stereotype.Repository
 public interface TransactionRepository extends Neo4jRepository<TransactionRel, Long> {
 
-    // ==== USER analytics ====
     
     @Query("""
        MATCH (u:User {externalId:$userId})-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
@@ -49,7 +49,6 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
     """)
     List<SpendByGroupDTO> channelMix(String userId, Instant from, Instant to);
 
-    // ==== ADMIN KPI analytics ====
     
     @Query("""
     MATCH (u:User)
@@ -131,7 +130,7 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
 
     @Query("""
     MATCH ()-[t:TRANSACTED_WITH]->(m:Merchant)-[:IN_CATEGORY]->(cat:Category)
-    WHERE toString(t.status) = 'SUCCESS'
+   WHERE toString(t.status) = 'COMPLETED'
     WITH cat.name AS category, count(t) AS txCount, sum(t.amount) AS amount
     RETURN category, txCount AS transactions, amount
     ORDER BY amount DESC
@@ -193,7 +192,6 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
        """)
        List<SpendByGroupDTO> basketByCategory(String userId, Instant from, Instant to);
 
-    // ==== MERCHANT analytics ====
     
     @Query("""
     MATCH (:Card)-[t:TRANSACTED_WITH]->(m:Merchant {merchantId:$merchantId})
@@ -270,12 +268,11 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
     """)
     List<SpendByGroupDTO> contactlessShare(String merchantId, Instant from, Instant to);
 
-    // ==== ADMIN analytics ====
     
     @Query("""
     MATCH (c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
     WHERE t.timestamp >= $from AND t.timestamp < $to
-    RETURN toString(c.type) AS groupKey,
+    RETURN coalesce(c.cardType, 'Unknown') AS groupKey,
            toFloat(sum(CASE WHEN toString(t.status)='SUCCESS' THEN 1 ELSE 0 END)) / count(t) AS totalAmount,
            count(t) AS txnCount
     ORDER BY txnCount DESC
@@ -292,7 +289,7 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
     @Query("""
     MATCH (c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
     WHERE t.timestamp >= $from AND t.timestamp < $to AND toString(t.status)='FAILED'
-    RETURN m.merchantId AS groupKey, sum(t.amount) AS totalAmount, count(t) AS txnCount
+    RETURN m.name AS groupKey, sum(t.amount) AS totalAmount, count(t) AS txnCount
     ORDER BY txnCount DESC
     LIMIT $limit
     """)
@@ -313,14 +310,13 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
     MATCH (c:Card)-[t:TRANSACTED_WITH]->(m)
     WHERE t.timestamp >= $from AND t.timestamp < $to
     WITH m, accepts, collect({net:toString(c.network), type:toString(c.type), status:toString(t.status)}) AS tx
-    RETURN m.merchantId AS groupKey, size(accepts) AS totalAmount, 
+    RETURN m.name AS groupKey, size(accepts) AS totalAmount, 
            reduce(f=0, x IN tx | f + CASE WHEN x.status='FAILED' THEN 1 ELSE 0 END) AS txnCount
     ORDER BY txnCount DESC
     LIMIT $limit
     """)
     List<SpendByGroupDTO> acceptanceGaps(Instant from, Instant to, long limit);
 
-    // Recurring monthly expenses per user
     @Query("""
     MATCH (u:User {externalId:$userId})-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
     WITH m, date(datetime(t.timestamp)) AS d, t.amount AS amt
@@ -332,7 +328,6 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
     """)
     List<RecurringExpenseDTO> recurringMonthlyExpenses(String userId);
 
-    // Collaborative filtering: merchants recommended by similar users
        @Query("""
    MATCH (u:User {externalId:$userId})-[:OWNS]->(c:Card)-[:TRANSACTED_WITH]->(m:Merchant)
    WITH collect(distinct m) AS myMerchants
@@ -348,7 +343,6 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
        """)
        List<CollaborativeRecommendationDTO> recommendedMerchantsCF(String userId);
 
-       // Optimal time for purchase per user (day/hour with human-readable day name)
        @Query("""
        MATCH (u:User {externalId:$userId})-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->()
        WITH datetime(t.timestamp) AS dt, t.amount AS amt
@@ -369,10 +363,8 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
        """)
        List<OptimalPurchaseTimeDTO> optimalPurchaseTime(String userId);
 
-   // Best card benefit for category for a specific user (uses RewardRule.categoryCode)
    @Query("""
-   MATCH (u:User {email:$email})-[:OWNS]->(card:Card)
-   MATCH (prog:RewardProgram)-[:APPLIES_TO]->(card)
+   MATCH (u:User {email:$email})-[:OWNS]->(card:Card)-[:HAS_REWARD]->(prog:RewardProgram)
    MATCH (prog)-[:HAS_RULE]->(rule:RewardRule)
    WHERE rule.categoryCode = $categoryCode
    RETURN card.panHash AS card, prog.name AS program, rule.rewardRate AS rate, rule.cap AS cap, rule.conditions AS conditions
@@ -380,4 +372,18 @@ public interface TransactionRepository extends Neo4jRepository<TransactionRel, L
    LIMIT 5
    """)
    List<CardBenefitDTO> bestCardBenefitsForCategory(String email, String categoryCode);
+
+    @Query("""
+    MATCH (u:User)-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->()
+    WITH u, avg(t.amount) AS userAvg
+    MATCH (u)-[:OWNS]->(c2:Card)-[t2:TRANSACTED_WITH]->(m:Merchant)
+    WITH u, m, userAvg, t2, (t2.amount / userAvg) AS multiplier
+    WHERE multiplier >= $minMultiplier
+    RETURN u.externalId AS userId, u.email AS email, coalesce(m.name, m.merchantId) AS merchantId,
+           t2.amount AS amount, userAvg AS avgAmount, multiplier AS multiplier,
+           t2.timestamp AS timestamp
+    ORDER BY multiplier DESC, timestamp DESC
+    LIMIT 100
+""")
+List<Map<String, Object>> detectAllSuspiciousTransactions(Double minMultiplier);
 }

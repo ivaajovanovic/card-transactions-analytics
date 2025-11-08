@@ -15,32 +15,29 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class UserNode {
     @Id
     @GeneratedValue
-    private Long id;
+    private Long id; // za spring data neo4j operacije...u endpointima
     
     @Property("externalId")
-    private String externalId; // for mapping to auth system
+    private String externalId; // za pretrage
     
     private String fullName;
     private String email;
     @JsonIgnore
-    private String password; // demo-only: plain text password (do not use in production)
+    private String password; // dodati validacije
     
-    // Demographics
     private Integer age;
     private String occupation;
     private IncomeLevel incomeLevel;
     private Lifestage lifestage;
     
-    // Behavioral
-    private String segment; // segment/cluster label (e.g., "Budget Traveler")
+    // izbaciti
+    private String segment; // Budget Traveler, Luxury Shopper
     private Boolean isFrequentTraveler;
     private Instant memberSince;
     
-    // Location
-    private String homeCity;
-    private String homeCountry;
+    @Relationship(type = "LIVES_IN")
+    private RegionNode homeRegion;
     
-    // Relationships
     @Relationship(type = "HAS_PREFERENCES")
     private UserPreferenceNode preferences;
     

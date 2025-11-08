@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import rs.ac.uns.acs.nais.GraphDatabaseService.model.MerchantNode;
 import rs.ac.uns.acs.nais.GraphDatabaseService.repository.MerchantRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -134,11 +135,10 @@ public class MerchantController {
     
     @GetMapping("/by-email/{email}/transactions")
     public ResponseEntity<List<Map<String, Object>>> getTransactions(
-            @PathVariable String email,
-            @RequestParam(defaultValue = "50") Integer limit,
-            @RequestParam(defaultValue = "0") Integer offset) {
+            @PathVariable String email) {
         String query = """
-            MATCH (m:Merchant {email: $email})<-[t:TRANSACTED_WITH]-(c:Card)<-[:OWNS]-(u:User)
+            MATCH (m:Merchant {email: $email})<-[t:TRANSACTED_WITH]-(c:Card)
+            OPTIONAL MATCH (c)<-[:OWNS]-(u:User)
             RETURN t.transactionId AS transactionId,
                    t.amount AS amount,
                    t.timestamp AS timestamp,
@@ -147,17 +147,13 @@ public class MerchantController {
                    t.contactless AS contactless,
                    t.status AS status,
                    c.cardNumber AS cardNumber,
-                   c.network AS cardNetwork,
+                   c.cardBrand AS cardNetwork,
                    u.fullName AS userName,
                    u.email AS userEmail
             ORDER BY t.timestamp DESC
-            SKIP $offset
-            LIMIT $limit
         """;
         var results = neo4jClient.query(query)
             .bind(email).to("email")
-            .bind(offset).to("offset")
-            .bind(limit).to("limit")
             .fetch()
             .all();
         return ResponseEntity.ok(results.stream().collect(Collectors.toList()));
@@ -166,7 +162,7 @@ public class MerchantController {
     @GetMapping("/by-email/{email}/analytics/overview")
     public ResponseEntity<Map<String, Object>> getMerchantOverview(@PathVariable String email) {
         String query = """
-            MATCH (m:Merchant {email: $email})<-[t:TRANSACTED_WITH]-(c:Card)
+            MATCH ()-[t:TRANSACTED_WITH]->()
             RETURN 
                 COUNT(t) AS totalTransactions,
                 SUM(t.amount) AS totalRevenue,
@@ -175,7 +171,6 @@ public class MerchantController {
                 MAX(t.amount) AS maxAmount
         """;
         var results = neo4jClient.query(query)
-            .bind(email).to("email")
             .fetch()
             .one();
         return ResponseEntity.ok(results.orElse(Map.of()));
@@ -185,7 +180,7 @@ public class MerchantController {
     public ResponseEntity<List<Map<String, Object>>> getTransactionsByCardNetwork(@PathVariable String email) {
         String query = """
             MATCH (m:Merchant {email: $email})<-[t:TRANSACTED_WITH]-(c:Card)
-            RETURN c.network AS cardNetwork,
+            RETURN c.cardBrand AS cardBrand,
                    COUNT(t) AS count,
                    SUM(t.amount) AS totalAmount,
                    AVG(t.amount) AS avgAmount
@@ -293,4 +288,22 @@ public class MerchantController {
             .all();
         return ResponseEntity.ok(results.stream().collect(Collectors.toList()));
     }
+
+    @GetMapping("/all")
+    public List<Map<String, Object>> getAllMerchantsWithAvgTicketSize() {
+    String query = """
+        MATCH (m:Merchant)
+        OPTIONAL MATCH (m)<-[t:TRANSACTED_WITH]-()
+        WITH m, AVG(t.amount) AS avgTicketSize
+        RETURN 
+            m.merchantId AS merchantId,
+            m.name AS name,
+            m.email AS email,
+            m.id AS id,
+            m.priceRange AS priceRange,
+            m.popularityScore AS popularityScore,
+            avgTicketSize
+        ORDER BY m.name
+    """;
+return new ArrayList<>(neo4jClient.query(query).fetch().all());}
 }

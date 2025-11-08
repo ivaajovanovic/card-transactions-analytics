@@ -1,5 +1,7 @@
-'use client'
 
+
+
+'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser, logout } from '@/lib/auth'
@@ -19,66 +21,35 @@ interface Transaction {
   status: string
   cardNumber: string
   cardNetwork: string
-  userName: string
-  userEmail: string
+  merchantName: string
+  merchantId: string
+  currency?: string
 }
 
-export default function MerchantTransactions() {
-  const handleDownloadPDF = (tx: Transaction) => {
-    const doc = new jsPDF();
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text('Transaction Details', 15, 20);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(13);
-    let y = 35;
-    doc.text(`Amount: $${tx.amount ? tx.amount.toFixed(2) : '-'}`, 15, y);
-    y += 10;
-    doc.text(`Status: ${tx.status || '-'}`, 15, y);
-    y += 10;
-    doc.text(`User: ${tx.userName || '-'}`, 15, y);
-    y += 10;
-    doc.text(`User Email: ${tx.userEmail || '-'}`, 15, y);
-    y += 10;
-    doc.text(`Date: ${formatDate(tx.timestamp)}`, 15, y);
-    y += 10;
-    doc.text(`Channel: ${tx.channel || '-'}`, 15, y);
-    y += 10;
-    doc.text(`Contactless: ${tx.contactless ? 'Yes' : 'No'}`, 15, y);
-    doc.save(`transaction_${tx.timestamp || 'details'}.pdf`);
-  }
+export default function UserTransactionsPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
-  const [merchantEmail, setMerchantEmail] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  // Uklonjen limit, prikazujemo sve
-  // Uklonjen offset
+  const [userEmail, setUserEmail] = useState<string>('')
 
   useEffect(() => {
     const currentUser = getCurrentUser()
     setUser(currentUser)
-    
-    if (!currentUser || currentUser.role !== 'merchant') {
+    const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : ''
+    if (!email) {
       router.push('/login')
       return
     }
-    
-    const email = localStorage.getItem('userEmail')
-    if (email) {
-      setMerchantEmail(email)
-      loadTransactions(email)
-    } else {
-      router.push('/login')
-    }
+    setUserEmail(email)
+    loadTransactions(email)
   }, [router])
 
   const loadTransactions = async (email: string) => {
     setLoading(true)
     try {
-      // Backend vraća sve transakcije za merchant-a
-      const data = await apiClient.getMerchantTransactionsByEmail(email)
-      setTransactions(data)
+      const data = await apiClient.getUserTransactionsByEmail(email)
+      setTransactions(data || [])
     } catch (error) {
       console.error('Failed to load transactions:', error)
     } finally {
@@ -105,6 +76,30 @@ export default function MerchantTransactions() {
     }
   }
 
+  const handleDownloadPDF = (tx: Transaction) => {
+    const doc = new jsPDF();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('Transaction Details', 15, 20);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(13);
+    let y = 35;
+    doc.text(`Amount: $${tx.amount ? tx.amount.toFixed(2) : '-'}`, 15, y);
+    y += 10;
+    doc.text(`Status: ${tx.status || '-'}`, 15, y);
+    y += 10;
+    doc.text(`Merchant: ${tx.merchantName || '-'}`, 15, y);
+    y += 10;
+    doc.text(`Merchant ID: ${tx.merchantId || '-'}`, 15, y);
+    y += 10;
+    doc.text(`Date: ${formatDate(tx.timestamp)}`, 15, y);
+    y += 10;
+    doc.text(`Channel: ${tx.channel || '-'}`, 15, y);
+    y += 10;
+    doc.text(`Contactless: ${tx.contactless ? 'Yes' : 'No'}`, 15, y);
+    doc.save(`transaction_${tx.timestamp || 'details'}.pdf`);
+  }
+
   if (!user || loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <p className="text-lg">Loading...</p>
@@ -116,7 +111,7 @@ export default function MerchantTransactions() {
       <header className="border-b bg-white shadow-sm">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/merchant/dashboard')}>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/user/dashboard')}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
@@ -127,7 +122,7 @@ export default function MerchantTransactions() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-medium">{user.email}</p>
+              <p className="text-sm font-medium">{userEmail}</p>
             </div>
             <Button variant="outline" size="sm" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -167,12 +162,11 @@ export default function MerchantTransactions() {
                           <div className="flex items-center gap-2 text-gray-600">
                             <User className="h-4 w-4" />
                             <div>
-                              <p className="font-medium text-gray-900">{tx.userName}</p>
-                              <p className="text-xs">{tx.userEmail}</p>
+                              <p className="font-medium text-gray-900">{user.name}</p>
+                              <p className="text-xs">{userEmail}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 text-gray-600">
-                            {/* Ikonica kartice i prikaz kartice uklonjeni */}
                             <div>
                               <p className="font-medium text-gray-900">{tx.cardNetwork}</p>
                             </div>
@@ -189,7 +183,6 @@ export default function MerchantTransactions() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      {/* ID prikaz uklonjen */}
                       <Button variant="outline" size="sm" onClick={() => handleDownloadPDF(tx)}>
                         Download PDF
                       </Button>
@@ -198,13 +191,11 @@ export default function MerchantTransactions() {
                 </div>
               ))}
             </div>
-            
             {transactions.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 No transactions found
               </div>
             )}
-            
             <div className="flex justify-between items-center mt-6 pt-4 border-t">
               {/* Uklonjena paginacija, prikazuju se sve transakcije */}
             </div>

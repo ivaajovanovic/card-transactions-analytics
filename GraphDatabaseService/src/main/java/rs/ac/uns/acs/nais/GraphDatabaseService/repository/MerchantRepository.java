@@ -16,14 +16,12 @@ public interface MerchantRepository extends Neo4jRepository<MerchantNode, Long> 
     @Query("MATCH (m:Merchant) WHERE m.email = $email AND m.password = $password RETURN m ORDER BY id(m) ASC LIMIT 1")
     Optional<MerchantNode> findByEmailAndPassword(@Param("email") String email, @Param("password") String password);
     
-    // Find merchants with sequences
     @Query("""
         MATCH (m:Merchant {merchantId: $merchantId})-[s:FOLLOWED_BY]->(next:Merchant)
         RETURN m, collect(s), collect(next)
     """)
     Optional<MerchantNode> findByMerchantIdWithSequences(@Param("merchantId") String merchantId);
     
-    // Find next merchants in sequence (chain analysis)
     @Query("""
         MATCH (m:Merchant {merchantId: $merchantId})-[s:FOLLOWED_BY]->(next:Merchant)
         RETURN next, s
@@ -32,23 +30,18 @@ public interface MerchantRepository extends Neo4jRepository<MerchantNode, Long> 
     """)
     List<Object> findMerchantSequences(@Param("merchantId") String merchantId, @Param("limit") Integer limit);
     
-    // Find merchants by price range
     @Query("MATCH (m:Merchant) WHERE m.priceRange = $priceRange RETURN m")
     List<MerchantNode> findByPriceRange(@Param("priceRange") String priceRange);
     
-    // Find merchants by tag
     @Query("MATCH (m:Merchant) WHERE $tag IN m.tags RETURN m ORDER BY m.popularityScore DESC")
     List<MerchantNode> findByTag(@Param("tag") String tag);
     
-    // Find popular merchants
     @Query("MATCH (m:Merchant) WHERE m.popularityScore >= $minScore RETURN m ORDER BY m.popularityScore DESC LIMIT $limit")
     List<MerchantNode> findPopularMerchants(@Param("minScore") Double minScore, @Param("limit") Integer limit);
     
-    // Find merchants by average ticket size range
     @Query("MATCH (m:Merchant) WHERE m.avgTicketSize >= $minTicket AND m.avgTicketSize <= $maxTicket RETURN m")
     List<MerchantNode> findByAvgTicketSizeRange(@Param("minTicket") Double minTicket, @Param("maxTicket") Double maxTicket);
     
-    // Recommend merchants based on sequence patterns (if user visited merchant X, suggest Y)
         @Query("""
                 MATCH (u:User {externalId: $userExternalId})<-[:OWNS]-(c:Card)-[:TRANSACTED_WITH]->(m:Merchant)
                 WITH collect(DISTINCT m.merchantId) AS visitedMerchants
@@ -64,7 +57,6 @@ public interface MerchantRepository extends Neo4jRepository<MerchantNode, Long> 
         @Param("limit") Integer limit
     );
     
-    // Location-based queries
     @Query("MATCH (m:Merchant)-[:IN_REGION]->(r:Region) WHERE r.city = $city RETURN m")
     List<MerchantNode> findByCity(@Param("city") String city);
     
@@ -74,7 +66,6 @@ public interface MerchantRepository extends Neo4jRepository<MerchantNode, Long> 
     @Query("MATCH (m:Merchant)-[:IN_REGION]->(r:Region) WHERE r.city = $city AND r.country = $country RETURN m")
     List<MerchantNode> findByLocation(@Param("city") String city, @Param("country") String country);
     
-    // Find merchants popular in user's home city
     @Query("""
         MATCH (u:User {externalId: $userExternalId})
         MATCH (m:Merchant)-[:IN_REGION]->(r:Region)
@@ -89,7 +80,6 @@ public interface MerchantRepository extends Neo4jRepository<MerchantNode, Long> 
         @Param("limit") Integer limit
     );
     
-    // Cross-region transaction detection: merchants with customers from multiple regions
     @Query("""
         MATCH (u:User)<-[:OWNS]-(c:Card)-[:TRANSACTED_WITH]->(m:Merchant)
         WITH m, COUNT(DISTINCT u.homeCountry) as countryCount, COUNT(DISTINCT u.homeCity) as cityCount
@@ -102,7 +92,6 @@ public interface MerchantRepository extends Neo4jRepository<MerchantNode, Long> 
         @Param("minCities") Integer minCities
     );
     
-    // Find nearby merchants (same city as user)
     @Query("""
         MATCH (u:User {externalId: $userExternalId})
         MATCH (m:Merchant)-[:IN_REGION]->(r:Region)

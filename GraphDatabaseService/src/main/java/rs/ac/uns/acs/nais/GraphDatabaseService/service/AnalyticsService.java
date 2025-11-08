@@ -4,6 +4,7 @@ import rs.ac.uns.acs.nais.GraphDatabaseService.dto.*;
 import rs.ac.uns.acs.nais.GraphDatabaseService.model.enums.TransactionStatus;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 public interface AnalyticsService {
     // USER analytics
@@ -39,5 +40,24 @@ public interface AnalyticsService {
     List<CategoryStatsDTO> getTopCategories();
     List<LocationStatsDTO> getTopLocations();
     List<TransactionTrendDTO> getTransactionTrends(Instant fromDate, Instant toDate);
-}
 
+        // Anomaly detection
+    List<Map<String, Object>> getSuspiciousTransactions(Double minMultiplier);
+
+    // Purchase prediction
+List<Map<String, Object>> predictPurchaseProbability(String userId, Integer limit);
+
+List<Map<String, Object>> predictMerchantPurchaseProbability(String merchantId, Integer limit);
+
+
+// Regional analytics
+List<Map<String, Object>> getRegionalPerformance();
+List<Map<String, Object>> getShoppingAffinity();
+List<Map<String, Object>> getCrossRegionPatterns(Integer limit);
+
+// Admin user management
+List<Map<String, Object>> getAllUsersWithStats();
+Map<String, Object> updateMissingUserData();
+
+List<SpendByGroupDTO> getAdminOptimalPurchaseTime();
+}

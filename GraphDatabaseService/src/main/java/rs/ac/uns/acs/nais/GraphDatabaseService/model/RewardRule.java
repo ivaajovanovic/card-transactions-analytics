@@ -12,9 +12,9 @@ public class RewardRule {
     @Id
     @GeneratedValue
     private Long id;
-    private String categoryCode; // MCC or category
-    private String merchantId; // optional, for merchant-specific offers
-    private Double rewardRate; // e.g. 0.05 for 5% cashback
-    private Double cap; // max reward per period
-    private String conditions; // e.g. min spend, days, etc.
+    private String categoryCode;
+    private String merchantId; 
+    private Double rewardRate; 
+    private Double cap; 
+    private String conditions; 
 }

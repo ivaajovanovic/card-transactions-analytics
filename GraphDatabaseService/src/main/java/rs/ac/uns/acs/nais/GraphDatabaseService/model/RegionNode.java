@@ -15,7 +15,7 @@ public class RegionNode {
     
     private String city;
     private String country;
-    private String name; // e.g., "Vojvodina", "Belgrade"
+    private String name; 
     private Double lat;
     private Double lon;
 }

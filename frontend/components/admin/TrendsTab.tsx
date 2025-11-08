@@ -12,6 +12,16 @@ interface TrendData {
   volume: number
 }
 
+// Helper for change display
+function getChangeDisplay(percent: number, current: TrendData, previous: TrendData | undefined) {
+  if (!previous || previous.transactions === 0) return 'No change';
+  if (Math.abs(percent) >= 100) {
+    const times = (current.transactions / previous.transactions).toFixed(1);
+    return percent > 0 ? `${times}x higher` : `${times}x lower`;
+  }
+  return `${percent > 0 ? '+' : ''}${percent.toFixed(1)}%`;
+}
+
 export function TrendsTab() {
   // Default: Last 12 months (from start of 2024 to end of 2025)
   const defaultFromDate = '2024-01-01T00:00:00Z'
@@ -118,55 +128,33 @@ export function TrendsTab() {
   }))
 
   return (
-    <div className="space-y-6">
-      {/* Insight Cards (no duplication of top KPIs) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average spend per transaction</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${avgTicketSize.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Average amount per transaction</p>
-          </CardContent>
-        </Card>
 
-        <Card>
+    <div className="space-y-6">
+      {/* Insight Cards (samo dva KPI) */}
+      <div className="flex flex-row gap-8 mb-6 w-full">
+        <Card className="w-1/2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Busiest month (transactions)</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{peakTxn.transactions.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">{fmtMonth(peakTxn.month)}</p>
+            <div className="text-2xl font-bold text-center w-full">{peakTxn.transactions.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground text-center w-full">{fmtMonth(peakTxn.month)}</p>
           </CardContent>
         </Card>
 
-        <Card>
+  <Card className="w-1/2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Highest spending month</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${(peakVol.volume).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">{fmtMonth(peakVol.month)}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Change vs previous month</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${lastMonthMoM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {`${lastMonthMoM >= 0 ? '+' : ''}${lastMonthMoM.toFixed(1)}%`}
-            </div>
-            <p className="text-xs text-muted-foreground">{prev ? `${fmtMonth(prev.month)} → ${fmtMonth(last.month)}` : 'N/A'}</p>
+            <div className="text-2xl font-bold text-center w-full">${(peakVol.volume).toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground text-center w-full">{fmtMonth(peakVol.month)}</p>
           </CardContent>
         </Card>
       </div>
+
 
       {/* Transaction Count Chart */}
       <Card>

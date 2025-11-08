@@ -1,6 +1,8 @@
+
 package rs.ac.uns.acs.nais.GraphDatabaseService.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -27,8 +30,8 @@ public class UserController {
     private final SampleDataGenerator sampleDataGenerator;
     private final Neo4jClient neo4jClient;
 
-    @GetMapping
-    public List<UserNode> all() { return repo.findAll(); }
+    //@GetMapping
+    //public List<Map<String, Object>> all() { return repo.findAllWithRegion(); }
 
     @GetMapping("/{id}")
     public UserNode get(@PathVariable Long id) { return repo.findById(id).orElseThrow(); }
@@ -38,6 +41,32 @@ public class UserController {
         return repo.findByExternalId(externalId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Get all transactions for a user by email
+    @GetMapping("/by-email/{email}/transactions")
+    public ResponseEntity<List<Map<String, Object>>> getUserTransactionsByEmail(@PathVariable String email) {
+        String query = """
+            MATCH (u:User {email: $email})-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
+            OPTIONAL MATCH (m)-[:IN_CATEGORY]->(cat:Category)
+            RETURN t.transactionId AS transactionId,
+                   t.amount AS amount,
+                   t.timestamp AS timestamp,
+                   t.status AS status,
+                   t.currency AS currency,
+                   t.transactionType AS transactionType,
+                   m.merchantId AS merchantId,
+                   m.name AS merchantName,
+                   m.city AS merchantCity,
+                   m.country AS merchantCountry,
+                   cat.code AS merchantCategory
+            ORDER BY t.timestamp DESC
+        """;
+        var results = neo4jClient.query(query)
+            .bind(email).to("email")
+            .fetch()
+            .all();
+        return ResponseEntity.ok(results.stream().collect(Collectors.toList()));
     }
    
        @GetMapping("/login")
@@ -66,8 +95,26 @@ public class UserController {
     public ResponseEntity<List<CardBenefitDTO>> getBestCardBenefits(
             @PathVariable String email,
             @PathVariable String categoryCode) {
-        List<CardBenefitDTO> res = transactionRepo.bestCardBenefitsForCategory(email, categoryCode);
+        
+        // Mapiranje MCC koda na categoryId
+        String mappedCategoryId = mapMccToCategory(categoryCode);
+        
+        List<CardBenefitDTO> res = transactionRepo.bestCardBenefitsForCategory(email, mappedCategoryId);
         return ResponseEntity.ok(res);
+    }
+    
+    private String mapMccToCategory(String mccCode) {
+        return switch (mccCode) {
+            case "5411" -> "cat-groceries";
+            case "5812", "5814" -> "cat-food";
+            case "5999", "5651", "5732" -> "cat-shopping";
+            case "7832", "7929" -> "cat-entertainment";
+            case "7011", "7012", "4511" -> "cat-travel";
+            case "5541", "5542" -> "cat-transport";
+            case "5912", "5122" -> "cat-health";
+            case "4900" -> "cat-utilities";
+            default -> mccCode; // Ako je već categoryId, vrati original
+        };
     }
     
     @GetMapping("/external/{externalId}/connected-users")
@@ -118,8 +165,22 @@ public class UserController {
             @RequestParam(defaultValue = "3") Integer minCities) {
         return ResponseEntity.ok(repo.findFrequentTravelers(minCities));
     }
+
     
-    // User Analytics Endpoints
+    
+    @GetMapping("/test-email/{email}")
+    public ResponseEntity<Map<String, Object>> testEmail(@PathVariable String email) {
+        log.info("TEST ENDPOINT: Received email: [{}]", email);
+        
+        String query = "MATCH (u:User {email: $email}) RETURN u.email AS email, u.firstName AS firstName";
+        var result = neo4jClient.query(query)
+            .bind(email).to("email")
+            .fetch()
+            .one();
+        
+        log.info("TEST ENDPOINT: Query result: {}", result);
+        return ResponseEntity.ok(result.orElse(Map.of("error", "User not found")));
+    }
     
     @GetMapping("/{userId}/analytics/spending-by-category")
     public ResponseEntity<List<Map<String, Object>>> getUserSpendingByCategory(@PathVariable Long userId) {
@@ -128,19 +189,24 @@ public class UserController {
     
     @GetMapping("/by-email/{email}/analytics/spending-by-category")
     public ResponseEntity<List<Map<String, Object>>> getUserSpendingByCategoryByEmail(@PathVariable String email) {
+        log.info("=== SPENDING BY CATEGORY: Received email: {}", email);
+        
         String query = """
-            MATCH (u:User {email: $email})<-[:OWNS]-(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)-[:IN_CATEGORY]->(cat:Category)
-            RETURN cat.code AS categoryCode, 
+            MATCH (u:User {email: $email})-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)-[:IN_CATEGORY]->(cat:Category)
+            RETURN cat.categoryId AS categoryCode, 
                    cat.name AS categoryName, 
                    COUNT(t) AS transactionCount, 
                    SUM(t.amount) AS totalAmount,
                    AVG(t.amount) AS avgAmount
             ORDER BY totalAmount DESC
         """;
+        
+        log.info("=== Executing query with parameter: {}", email);
         var results = neo4jClient.query(query)
             .bind(email).to("email")
             .fetch()
             .all();
+        log.info("=== Query returned {} results", results.size());
         return ResponseEntity.ok(results.stream().collect(Collectors.toList()));
     }
     
@@ -156,7 +222,7 @@ public class UserController {
             @PathVariable String email,
             @RequestParam(defaultValue = "10") Integer limit) {
         String query = """
-            MATCH (u:User {email: $email})<-[:OWNS]-(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
+            MATCH (u:User {email: $email})-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
             OPTIONAL MATCH (m)-[:IN_CATEGORY]->(cat:Category)
             RETURN m.merchantId AS merchantId,
                    m.name AS merchantName,
@@ -183,13 +249,14 @@ public class UserController {
     @GetMapping("/by-email/{email}/analytics/card-usage")
     public ResponseEntity<List<Map<String, Object>>> getUserCardUsageByEmail(@PathVariable String email) {
         String query = """
-            MATCH (u:User {email: $email})<-[:OWNS]-(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
+            MATCH (u:User {email: $email})-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
             RETURN c.panHash AS cardId,
-                   c.network AS network,
-                   c.type AS type,
+                   c.cardBrand AS network,
+                   c.cardType AS type,
                    COUNT(t) AS transactionCount,
                    SUM(t.amount) AS totalSpent,
-                   SUM(CASE WHEN t.contactless = true THEN 1 ELSE 0 END) AS contactlessCount
+                   SUM(CASE WHEN t.contactless = TRUE THEN 1 ELSE 0 END) AS contactlessCount,
+                   0 AS installmentsCount
             ORDER BY transactionCount DESC
         """;
         var results = neo4jClient.query(query)
@@ -207,7 +274,7 @@ public class UserController {
     @GetMapping("/by-email/{email}/analytics/monthly-spending")
     public ResponseEntity<List<Map<String, Object>>> getUserMonthlySpendingByEmail(@PathVariable String email) {
         String query = """
-            MATCH (u:User {email: $email})<-[:OWNS]-(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
+            MATCH (u:User {email: $email})-[:OWNS]->(c:Card)-[t:TRANSACTED_WITH]->(m:Merchant)
             WITH u, t, m,
                  toString(datetime(t.timestamp).year) + '-' + 
                  right('0' + toString(datetime(t.timestamp).month), 2) AS yearMonth

@@ -34,6 +34,8 @@ export function RecommendationsTab() {
     refetchOnWindowFocus: true,
   })
 
+
+
   const { data: channelMix = [] } = useQuery<SpendGroup[]>({
     queryKey: ['admin-reco-channel-mix', userId, from, to],
     queryFn: () => apiClient.getUserChannelMix(userId, from, to),
@@ -50,7 +52,11 @@ export function RecommendationsTab() {
     refetchOnWindowFocus: true,
   })
 
-  const channelColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+  const channelColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',"#00b8d9", // cyan
+  "#ff6f61"]
+
+    const allowedChannels = ["APP", "ATM", "IN_STORE", "MOBILE", "ONLINE", "POS", "WEB"];
+const filteredChannelMix = channelMix.filter(c => allowedChannels.includes(c.groupKey));
 
   return (
     <div className="space-y-6">
@@ -132,14 +138,14 @@ export function RecommendationsTab() {
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
-                  data={channelMix.map((c) => ({ name: c.groupKey, value: c.txnCount }))}
+  data={filteredChannelMix.map((c) => ({ name: c.groupKey, value: c.txnCount }))}
                   dataKey="value"
                   nameKey="name"
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
                 >
-                  {channelMix.map((_, idx) => (
+                  {filteredChannelMix.map((_, idx) => (
                     <Cell key={idx} fill={channelColors[idx % channelColors.length]} />
                   ))}
                 </Pie>

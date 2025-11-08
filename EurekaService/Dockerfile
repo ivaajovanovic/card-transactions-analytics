@@ -6,7 +6,7 @@ RUN mvn install -DskipTests
 
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
 
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk-alpine
 VOLUME /tmp
 ARG DEPENDENCY=/workspace/app/target/dependency
 COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib

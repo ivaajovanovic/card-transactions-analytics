@@ -156,7 +156,6 @@ public class AnalyticsController {
         return analytics.acceptanceGaps(from, to, limit);
     }
 
-    // ===== DASHBOARD KPI analytics =====
     @GetMapping("/admin/kpis")
     public AdminKPIResponse getAdminKPIs() {
         return analytics.getAdminKPIs();
@@ -184,5 +183,10 @@ public class AnalyticsController {
     ) {
         return analytics.getTransactionTrends(fromDate, toDate);
     }
+
+    @GetMapping("/admin/analytics/optimal-purchase-time")
+public List<SpendByGroupDTO> getAdminOptimalPurchaseTime() {
+    return analytics.getAdminOptimalPurchaseTime();
+}
 }
 

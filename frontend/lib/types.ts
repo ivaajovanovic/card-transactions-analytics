@@ -128,6 +128,7 @@ export interface AdminKPIResponse {
   merchantGrowth: number
   transactionGrowth: number
   volumeGrowth: number
+  avgTransactionAmount: number
 }
 
 export interface UserSegmentDTO {

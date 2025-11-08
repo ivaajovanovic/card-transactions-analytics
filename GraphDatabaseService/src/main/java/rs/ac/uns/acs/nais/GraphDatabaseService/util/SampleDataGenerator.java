@@ -290,8 +290,7 @@ public class SampleDataGenerator {
             user.setMemberSince(Instant.now().minusSeconds(random.nextInt(1095) * 86400L));
             
             RegionNode homeRegion = regions.get(random.nextInt(regions.size()));
-            user.setHomeCity(homeRegion.getCity());
-            user.setHomeCountry(homeRegion.getCountry());
+            user.setHomeRegion(homeRegion);
             user.setIsFrequentTraveler(random.nextInt(100) < 20);
             
             // Income level and lifestage
@@ -363,8 +362,7 @@ public class SampleDataGenerator {
         card.setPanHash("CARD" + user.getExternalId() + String.format("%02d", cardNum));
         card.setNetwork(random.nextBoolean() ? CardNetwork.VISA : CardNetwork.MASTERCARD);
         card.setType(random.nextBoolean() ? CardType.CREDIT : CardType.DEBIT);
-        card.setIssuerCountry(user.getHomeCountry());
-        card.setMonthlyLimit((double) (random.nextInt(10) + 1) * 1000);
+card.setIssuerCountry(user.getHomeRegion() != null ? user.getHomeRegion().getCountry() : "USA");        card.setMonthlyLimit((double) (random.nextInt(10) + 1) * 1000);
         card.setOwner(user);
         
         // Create 20-40 transactions per card
@@ -516,8 +514,7 @@ public class SampleDataGenerator {
             card.setPanHash("CARD" + user.getExternalId() + String.format("%02d", i + 1));
             card.setNetwork(random.nextBoolean() ? CardNetwork.VISA : CardNetwork.MASTERCARD);
             card.setType(random.nextBoolean() ? CardType.CREDIT : CardType.DEBIT);
-            card.setIssuerCountry(user.getHomeCountry());
-            card.setMonthlyLimit((double) (random.nextInt(10) + 1) * 1000);
+            card.setIssuerCountry(user.getHomeRegion() != null ? user.getHomeRegion().getCountry() : "USA");            card.setMonthlyLimit((double) (random.nextInt(10) + 1) * 1000);
             card.setOwner(user);
             
             List<TransactionRel> transactions = new ArrayList<>();

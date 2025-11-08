@@ -16,19 +16,18 @@ public class MerchantNode {
     @GeneratedValue
     private Long id;
     
-    private String merchantId; // external merchant id
+    private String merchantId; 
     private String name;
-    private String mcc; // MCC code
-    private String brand; // brand chain
-    private String email; // merchant contact/login email
+    private String mcc; //bespotreno
+    private String brand; 
+    private String email; 
     @JsonIgnore
-    private String password; // demo-only: plain text password (do not use in production)
+    private String password; 
 
-    // Recommendation & Analytics Fields
-    private Set<String> tags; // e.g., "fast-food", "organic", "luxury"
-    private Double avgTicketSize; // average transaction amount
+    private Set<String> tags; // posle za preporuke
+    private Double avgTicketSize; 
     private PriceRange priceRange; // BUDGET, MODERATE, UPSCALE, LUXURY
-    private Double popularityScore; // calculated metric for recommendations
+    private Double popularityScore; // za prpeoruke
 
     @Relationship(type = "IN_CATEGORY")
     private CategoryNode category;
@@ -37,8 +36,8 @@ public class MerchantNode {
     private RegionNode region;
 
     @Relationship(type = "ACCEPTS")
-    private Set<CardAcceptance> accepts; // Relationship to accepted pairs
+    private Set<CardAcceptance> accepts; 
     
     @Relationship(type = "FOLLOWED_BY")
-    private Set<MerchantSequenceRel> sequences; // Merchant chain patterns
+    private Set<MerchantSequenceRel> sequences;
 }

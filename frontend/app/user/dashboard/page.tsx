@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TrendingUp, CreditCard, Lightbulb } from 'lucide-react'
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#f97316', '#14b8a6']
@@ -114,38 +116,36 @@ export default function UserDashboard() {
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8" aria-label="Tabs">
-            {[
-              { id: 'spending', label: 'My Spending' },
-              { id: 'cards', label: 'My Cards' },
-              { id: 'insights', label: 'Insights' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`
-                  py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                  ${activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }
-                `}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* Main Content */}
+      {/* Main Content with Tabs */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'spending' && <SpendingTab data={{ spendingByCategory, topMerchants, monthlySpending }} />}
-        {activeTab === 'cards' && <CardsTab data={{ cardUsage }} />}
-  {activeTab === 'insights' && <InsightsTab userEmail={userEmail} data={{ spendingByCategory, cardUsage, monthlySpending, recurringExpenses, collaborativeRecommendations, optimalPurchaseTime }} />}
+        <Tabs defaultValue="spending" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="spending">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              My Spending
+            </TabsTrigger>
+            <TabsTrigger value="cards">
+              <CreditCard className="mr-2 h-4 w-4" />
+              My Cards
+            </TabsTrigger>
+            <TabsTrigger value="insights">
+              <Lightbulb className="mr-2 h-4 w-4" />
+              Insights
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="spending">
+            <SpendingTab data={{ spendingByCategory, topMerchants, monthlySpending }} />
+          </TabsContent>
+          
+          <TabsContent value="cards">
+            <CardsTab data={{ cardUsage }} />
+          </TabsContent>
+          
+          <TabsContent value="insights">
+            <InsightsTab userEmail={userEmail} data={{ spendingByCategory, cardUsage, monthlySpending, recurringExpenses, collaborativeRecommendations, optimalPurchaseTime, topMerchants }} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )
@@ -165,11 +165,17 @@ function SpendingTab({ data }: { data: any }) {
           <p className="text-sm font-medium text-gray-500">Total Spent (All Time)</p>
           <p className="text-3xl font-bold text-gray-900 mt-2">${totalSpent.toFixed(2)}</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
+        <div className="bg-white p-6 rounded-lg shadow-sm border flex flex-col items-start">
           <p className="text-sm font-medium text-gray-500">Total Transactions</p>
           <p className="text-3xl font-bold text-gray-900 mt-2">
             {spendingByCategory.reduce((sum: number, cat: any) => sum + (cat.transactionCount || 0), 0)}
           </p>
+          <button
+            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm"
+            onClick={() => window.location.href = '/user/transactions'}
+          >
+            View All
+          </button>
         </div>
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <p className="text-sm font-medium text-gray-500">Favorite Merchants</p>
@@ -300,7 +306,6 @@ function CardsTab({ data }: { data: any }) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spent</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contactless</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Installments</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -312,7 +317,6 @@ function CardsTab({ data }: { data: any }) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.transactionCount}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${card.totalSpent?.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.contactlessCount}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.installmentsCount}</td>
                 </tr>
               ))}
             </tbody>
@@ -325,7 +329,7 @@ function CardsTab({ data }: { data: any }) {
 
 // Insights Tab Component
 function InsightsTab({ data, userEmail }: { data: any, userEmail: string }) {
-  const { spendingByCategory, cardUsage, monthlySpending, recurringExpenses, collaborativeRecommendations, optimalPurchaseTime } = data
+  const { spendingByCategory, cardUsage, monthlySpending, recurringExpenses, collaborativeRecommendations, optimalPurchaseTime, topMerchants } = data
   const [selectedCategory, setSelectedCategory] = useState<string>('5411')
   const [bestCardBenefits, setBestCardBenefits] = useState<any[]>([])
   const [loadingBenefits, setLoadingBenefits] = useState<boolean>(false)
@@ -574,50 +578,83 @@ function InsightsTab({ data, userEmail }: { data: any, userEmail: string }) {
       <div className="bg-white p-6 rounded-lg shadow-sm border">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">💡 Recommendations</h3>
         <ul className="space-y-3">
-          <li className="flex items-start">
-            <span className="text-blue-500 mr-2">•</span>
-            <span className="text-gray-700">
-              Consider using contactless payments more often for faster checkout and added security
-            </span>
-          </li>
-          {topCategory && (
+          {/* Contactless usage recommendation - based on actual data */}
+          {cardUsage.length > 0 && (() => {
+            const totalTransactions = cardUsage.reduce((sum: number, card: any) => sum + (card.transactionCount || 0), 0)
+            const totalContactless = cardUsage.reduce((sum: number, card: any) => sum + (card.contactlessCount || 0), 0)
+            const contactlessPercentage = totalTransactions > 0 ? (totalContactless / totalTransactions) * 100 : 0
+            
+            if (contactlessPercentage < 70 && totalContactless > 0) {
+              return (
+                <li className="flex items-start">
+                  <span className="text-blue-500 mr-2">•</span>
+                  <span className="text-gray-700">
+                    You used contactless payment in {contactlessPercentage.toFixed(0)}% of transactions. Consider using it more often for faster checkout.
+                  </span>
+                </li>
+              )
+            }
+            return null
+          })()}
+
+          {/* High spending category recommendation */}
+          {topCategory && topCategory.totalAmount > 0 && (
             <li className="flex items-start">
               <span className="text-blue-500 mr-2">•</span>
               <span className="text-gray-700">
-                Review your spending in {topCategory.categoryName} to identify potential savings
+                {topCategory.categoryName} is your highest spending category (${topCategory.totalAmount.toFixed(2)}). Review transactions to identify potential savings.
               </span>
             </li>
           )}
-          {recurringExpenses && recurringExpenses.length > 0 && (
+
+          {/* Card utilization recommendation */}
+          {mostUsedCard && cardUsage.length > 1 && (
             <li className="flex items-start">
               <span className="text-blue-500 mr-2">•</span>
               <span className="text-gray-700">
-                You have {recurringExpenses.length} recurring expense(s). Consider setting up automatic payment alerts for these merchants.
+                Your {mostUsedCard.network} card ({mostUsedCard.type}) has {mostUsedCard.transactionCount} transactions. Consider checking if it offers the best rewards for your spending pattern.
               </span>
             </li>
           )}
-          {collaborativeRecommendations && collaborativeRecommendations.length > 0 && (
+
+          {/* Optimal shopping time recommendation */}
+          {optimalPurchaseTime && optimalPurchaseTime.length > 0 && optimalPurchaseTime[0]?.transactionCount > 1 && (
             <li className="flex items-start">
               <span className="text-blue-500 mr-2">•</span>
               <span className="text-gray-700">
-                Based on similar users, we found {collaborativeRecommendations.length} new merchants you might be interested in.
+                You typically shop on {optimalPurchaseTime[0]?.dayOfWeek} at {optimalPurchaseTime[0]?.hour}:00 (${optimalPurchaseTime[0]?.totalAmount?.toFixed(2)} in {optimalPurchaseTime[0]?.transactionCount} transactions). Consider scheduling regular purchases then.
               </span>
             </li>
           )}
-          {optimalPurchaseTime && optimalPurchaseTime.length > 0 && (
+
+          {/* Monthly spending trend */}
+          {monthlySpending.length >= 2 && (() => {
+            const latest = monthlySpending[0]
+            const previous = monthlySpending[1]
+            const change = ((latest.totalAmount - previous.totalAmount) / previous.totalAmount) * 100
+            
+            if (Math.abs(change) > 15) {
+              return (
+                <li className="flex items-start">
+                  <span className="text-blue-500 mr-2">•</span>
+                  <span className="text-gray-700">
+                    Your spending {change > 0 ? 'increased' : 'decreased'} by {Math.abs(change).toFixed(0)}% compared to last month (${latest.totalAmount.toFixed(2)} vs ${previous.totalAmount.toFixed(2)}).
+                  </span>
+                </li>
+              )
+            }
+            return null
+          })()}
+
+          {/* Diverse merchant usage */}
+          {topMerchants.length > 0 && topMerchants[0]?.transactionCount > 5 && (
             <li className="flex items-start">
               <span className="text-blue-500 mr-2">•</span>
               <span className="text-gray-700">
-                Your optimal shopping time is {optimalPurchaseTime[0]?.dayOfWeek} at {optimalPurchaseTime[0]?.hour}:00 - consider scheduling regular purchases then.
+                {topMerchants[0]?.merchantName} is your most frequent merchant ({topMerchants[0]?.transactionCount} transactions, ${topMerchants[0]?.totalSpent?.toFixed(2)}). Check if they offer loyalty programs or discounts.
               </span>
             </li>
           )}
-          <li className="flex items-start">
-            <span className="text-blue-500 mr-2">•</span>
-            <span className="text-gray-700">
-              Set up alerts for large transactions to monitor your spending habits
-            </span>
-          </li>
         </ul>
       </div>
     </div>

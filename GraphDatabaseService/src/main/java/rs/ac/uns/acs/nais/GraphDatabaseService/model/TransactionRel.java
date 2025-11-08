@@ -18,14 +18,14 @@ public class TransactionRel {
     private Instant timestamp;
     private Double amount;
     private Currency currency;
-    private Double originalAmount; // if FX
+    private Double originalAmount; 
     private Currency originalCurrency;
     private Double fxRate;
 
     private PaymentType paymentType;
     private PaymentPurpose purpose;
     private TransactionStatus status;
-    private DeclineReason declineReason; // if FAILED
+    private DeclineReason declineReason; 
     private String authCode;
     private Channel channel; // IN_STORE/WEB/APP/PHONE
     private Boolean contactless;
